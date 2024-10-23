@@ -1,5 +1,11 @@
 package main
 
+// TODO:
+// - Add a flag to specify the model to use
+// - Read the chat log for context possibilities
+//   - That is, could add a flag to read the last n messages for context
+// - Add a flag to specify the chat log file
+
 import (
 	"bufio"
 	"context"
@@ -30,6 +36,12 @@ func main() {
 		}
 	}
 
+	log, err := os.OpenFile(home+"/.config/ask-ai/ask-ai.chat.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening/creating chat log file: ", err)
+		fmt.Println("Chat will not be saved")
+	}
+
 	var prompt string
 	if len(os.Args) > 1 {
 		prompt = os.Args[1]
@@ -39,6 +51,7 @@ func main() {
 		prompt, _ = reader.ReadString('\n')
 		fmt.Println()
 	}
+	log.WriteString("Prompt: " + prompt + "\n\n")
 
 	client := openai.NewClient(option.WithAPIKey(key))
 	ctx := context.Background()
@@ -53,10 +66,16 @@ func main() {
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {
-			print(evt.Choices[0].Delta.Content)
+			data := evt.Choices[0].Delta.Content
+			print(data)
+			_, err := log.WriteString(data)
+			if err != nil {
+				fmt.Println("Error writing chat to chat log file: ", err)
+			}
 		}
 	}
 	println()
+	log.WriteString("\n------\n")
 
 	if stream.Err() != nil {
 		fmt.Printf("Error: %s\n", stream.Err())
