@@ -2,9 +2,12 @@ package main
 
 // TODO:
 // - Add a flag to specify the model to use
+// - Add a flag to specify the chat log file
 // - Read the chat log for context possibilities
 //   - That is, could add a flag to read the last n messages for context
-// - Add a flag to specify the chat log file
+// - Create an output class/struct or something that can receive different
+//   'stream' objects so that one output functoin can be called, then it will
+//   send the output to all attached streams. (eg, stdout, log file, etc)
 
 import (
 	"bufio"
@@ -36,10 +39,10 @@ func main() {
 		}
 	}
 
-	log, err := os.OpenFile(home+"/.config/ask-ai/ask-ai.chat.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	log, err := os.OpenFile(home+"/.config/ask-ai/ask-ai.chat.log", os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		fmt.Println("Error opening/creating chat log file: ", err)
-		fmt.Println("Chat will not be saved")
+		fmt.Println("CHAT WILL NOT BE SAVED (but we're forging on)")
 	}
 
 	var prompt string
@@ -51,31 +54,37 @@ func main() {
 		prompt, _ = reader.ReadString('\n')
 		fmt.Println()
 	}
-	log.WriteString("Prompt: " + prompt + "\n\n")
+	log.WriteString("User: " + prompt + "\n\n")
 
 	client := openai.NewClient(option.WithAPIKey(key))
 	ctx := context.Background()
 	stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			// To use context from previous responses, use AssistantMessage:
+			// openai.AssistantMessage(msg_context),
 			openai.UserMessage(prompt),
 		}),
 		Seed:  openai.Int(1),
 		Model: openai.F(openai.ChatModelGPT4o),
 	})
 
+	// Apparently what happens with stream is that the server chunks the
+	// response according to its own internal desires and whims, presenting the
+	// result as if it's a stream of responses, which looks more
+	// conversational.
+	// TODO: I need to line-wrap the responses so they don't go all the way
+	// across the entire screen.
+	log.WriteString("Assistant: ")
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {
 			data := evt.Choices[0].Delta.Content
 			print(data)
-			_, err := log.WriteString(data)
-			if err != nil {
-				fmt.Println("Error writing chat to chat log file: ", err)
-			}
+			log.WriteString(data)
 		}
 	}
 	println()
-	log.WriteString("\n------\n")
+	log.WriteString("\n<------>\n")
 
 	if stream.Err() != nil {
 		fmt.Printf("Error: %s\n", stream.Err())
