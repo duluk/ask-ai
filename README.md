@@ -2,7 +2,7 @@
 
 ## Description
 
-The utility everyone has written for themeselves, a basic CLI tool for asking LLMs questions without bothering with a mouse.
+The utility everyone has written for themselves, a basic CLI tool for asking LLMs questions without bothering with a mouse.
 
 Full disclosure: this is my first Go project. I mainly write in Ruby, C and Python.
 
@@ -24,7 +24,7 @@ $ ./ask-ai "What is the best chess opening for a beginner?"
 ```
 
 * If no query is provided, ask-ai will prompt for one:
-```bash
+```
 $ ./ask-ai
 > What is the best chess opening for a checkers player?
 ```
