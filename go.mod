@@ -1,4 +1,4 @@
-module ask-ai
+module github.com/duluk/ask-ai
 
 go 1.22.7
 
