@@ -11,11 +11,10 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 	"os"
+
+	"github.com/duluk/ask-ai/LLM"
 )
 
 func main() {
@@ -56,37 +55,9 @@ func main() {
 	}
 	log.WriteString("User: " + prompt + "\n\n")
 
-	client := openai.NewClient(option.WithAPIKey(key))
-	ctx := context.Background()
-	stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
-		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-			// To use context from previous responses, use AssistantMessage:
-			// openai.AssistantMessage(msg_context),
-			openai.UserMessage(prompt),
-		}),
-		Seed:  openai.Int(1),
-		Model: openai.F(openai.ChatModelGPT4o),
-	})
-
-	// Apparently what happens with stream is that the server chunks the
-	// response according to its own internal desires and whims, presenting the
-	// result as if it's a stream of responses, which looks more
-	// conversational.
-	// TODO: I need to line-wrap the responses so they don't go all the way
-	// across the entire screen.
-	log.WriteString("Assistant: ")
-	for stream.Next() {
-		evt := stream.Current()
-		if len(evt.Choices) > 0 {
-			data := evt.Choices[0].Delta.Content
-			print(data)
-			log.WriteString(data)
-		}
-	}
-	println()
-	log.WriteString("\n<------>\n")
-
-	if stream.Err() != nil {
-		fmt.Printf("Error: %s\n", stream.Err())
+	client := LLM.New_Client(key)
+	err = LLM.Chat(client, prompt, log)
+	if err != nil {
+		fmt.Println("Error: ", err)
 	}
 }
