@@ -7,6 +7,8 @@ package main
 // - Create an output class/struct or something that can receive different
 //   'stream' objects so that one output function can be called, then it will
 //   send the output to all attached streams. (eg, stdout, log file, etc)
+// - Add configuration file initially for providing the option for storing chat
+//   results in a DB
 
 import (
 	"bufio"
@@ -22,6 +24,7 @@ func chat_with_openai(args LLM.Client_Args) {
 	err := client.Chat(args)
 	if err != nil {
 		fmt.Println("Error: ", err)
+		os.Exit(1)
 	}
 }
 

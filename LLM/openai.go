@@ -20,15 +20,17 @@ func (cs *OpenAI) Chat(args Client_Args) error {
 	log := args.Log
 
 	ctx := context.Background()
-	stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
-		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-			// To use context from previous responses, use AssistantMessage:
-			// openai.AssistantMessage(msg_context),
-			openai.UserMessage(args.Prompt),
-		}),
-		Seed:  openai.Int(1),
-		Model: openai.F(openai.ChatModelGPT4o),
-	})
+	stream := client.Chat.Completions.NewStreaming(
+		ctx,
+		openai.ChatCompletionNewParams{
+			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+				// To use context from previous responses, use AssistantMessage:
+				// openai.AssistantMessage(msg_context),
+				openai.UserMessage(args.Prompt),
+			}),
+			Seed:  openai.Int(1),
+			Model: openai.F(openai.ChatModelGPT4o),
+		})
 
 	// Apparently what happens with stream is that the server chunks the
 	// response according to its own internal desires and whims, presenting the

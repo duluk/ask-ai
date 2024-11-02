@@ -22,19 +22,21 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 	log := args.Log
 	client := cs.Client
 
-	resp, err := client.CreateMessagesStream(context.Background(), anthropic.MessagesStreamRequest{
-		MessagesRequest: anthropic.MessagesRequest{
-			// TODO: figure out how to specify different anthropic models
-			Model: anthropic.ModelClaudeInstant1Dot2,
-			Messages: []anthropic.Message{
-				anthropic.NewUserTextMessage(prompt),
+	resp, err := client.CreateMessagesStream(
+		context.Background(),
+		anthropic.MessagesStreamRequest{
+			MessagesRequest: anthropic.MessagesRequest{
+				// TODO: figure out how to specify different anthropic models
+				Model: anthropic.ModelClaudeInstant1Dot2,
+				Messages: []anthropic.Message{
+					anthropic.NewUserTextMessage(prompt),
+				},
+				MaxTokens: 1000,
 			},
-			MaxTokens: 1000,
-		},
-		OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
-			print(*data.Delta.Text)
-		},
-	})
+			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
+				print(*data.Delta.Text)
+			},
+		})
 	if err != nil {
 		var e *anthropic.APIError
 		if errors.As(err, &e) {
