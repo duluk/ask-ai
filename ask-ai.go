@@ -17,7 +17,6 @@ import (
 	"github.com/duluk/ask-ai/LLM"
 )
 
-// func chat_with_openai(prompt string, context int, max_tokens int, log *os.File) {
 func chat_with_openai(args LLM.Client_Args) {
 	client := LLM.New_OpenAI(args.Max_Tokens)
 	err := client.Chat(args)
@@ -26,7 +25,6 @@ func chat_with_openai(args LLM.Client_Args) {
 	}
 }
 
-// func chat_with_sonnet(prompt string, context int, max_tokens int, log *os.File) {
 func chat_with_sonnet(args LLM.Client_Args) {
 	client := LLM.New_Anthropic(args.Max_Tokens)
 	err := client.Chat(args)
@@ -80,10 +78,8 @@ func main() {
 
 	switch *model {
 	case "sonnet":
-		// chat_with_sonnet(prompt, *context, *max_tokens, log)
 		chat_with_sonnet(client_args)
 	case "chatgpt":
-		// chat_with_openai(prompt, *context, *max_tokens, log)
 		chat_with_openai(client_args)
 	default:
 		fmt.Println("Unknown model: ", *model)

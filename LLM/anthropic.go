@@ -24,6 +24,7 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 
 	resp, err := client.CreateMessagesStream(context.Background(), anthropic.MessagesStreamRequest{
 		MessagesRequest: anthropic.MessagesRequest{
+			// TODO: figure out how to specify different anthropic models
 			Model: anthropic.ModelClaudeInstant1Dot2,
 			Messages: []anthropic.Message{
 				anthropic.NewUserTextMessage(prompt),
