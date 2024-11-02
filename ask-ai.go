@@ -11,42 +11,52 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 
 	"github.com/duluk/ask-ai/LLM"
 )
 
-func main() {
-	key := os.Getenv("OPENAI_API_KEY")
-	home := os.Getenv("HOME")
-	if key == "" {
-		file, err := os.Open(home + "/.config/ask-ai/openai-api-key")
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		if scanner.Scan() {
-			key = scanner.Text()
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
+// func chat_with_openai(prompt string, context int, max_tokens int, log *os.File) {
+func chat_with_openai(args LLM.Client_Args) {
+	client := LLM.New_Client()
+	err := LLM.Chat(client, args)
+	if err != nil {
+		fmt.Println("Error: ", err)
 	}
+}
 
-	log, err := os.OpenFile(home+"/.config/ask-ai/ask-ai.chat.log", os.O_APPEND|os.O_RDWR, 0644)
+// func chat_with_sonnet(prompt string, context int, max_tokens int, log *os.File) {
+func chat_with_sonnet(args LLM.Client_Args) {
+	cs := LLM.New_Claude_Sonnet(args.max_tokens)
+	resp, err := cs.Chat(args)
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+	fmt.Println("Claude: ", resp)
+}
+
+func main() {
+	HOME := os.Getenv("HOME")
+
+	model := flag.String("model", "sonnet", "Which LLM to use (sonnet|chatgpt)")
+	log_fn := flag.String("log", HOME+"/.config/ask-ai/ask-ai.chat.log", "Chat log file")
+	context := flag.Int("context", 0, "Use n previous messages for context")
+	max_tokens := flag.Int("max-tokens", 1024, "Maximum tokens to generate")
+
+	flag.Parse()
+
+	log, err := os.OpenFile(*log_fn, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		fmt.Println("Error opening/creating chat log file: ", err)
 		fmt.Println("CHAT WILL NOT BE SAVED (but we're forging on)")
 	}
+	defer log.Close()
 
 	var prompt string
-	if len(os.Args) > 1 {
-		prompt = os.Args[1]
+	if flag.NArg() > 0 {
+		prompt = flag.Arg(0)
 	} else {
 		fmt.Print("> ")
 		reader := bufio.NewReader(os.Stdin)
@@ -55,9 +65,21 @@ func main() {
 	}
 	log.WriteString("User: " + prompt + "\n\n")
 
-	client := LLM.New_Client(key)
-	err = LLM.Chat(client, prompt, log)
-	if err != nil {
-		fmt.Println("Error: ", err)
+	client_args := LLM.Client_Args{
+		prompt:     prompt,
+		context:    *context,
+		max_tokens: *max_tokens,
+		log:        log,
+	}
+
+	switch *model {
+	case "sonnet":
+		// chat_with_sonnet(prompt, *context, *max_tokens, log)
+		chat_with_sonnet(client_args)
+	case "chatgpt":
+		// chat_with_openai(prompt, *context, *max_tokens, log)
+		chat_with_openai(client_args)
+	default:
+		fmt.Println("Unknown model: ", *model)
 	}
 }
