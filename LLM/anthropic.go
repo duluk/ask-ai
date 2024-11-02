@@ -3,17 +3,15 @@ package LLM
 // Add support for the anthropic model, Claude Sonnet
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/liushuangls/go-anthropic/v2"
 )
 
 func New_Anthropic(max_tokens int) *Anthropic {
-	api_key := get_anthropic_key()
+	api_key := get_client_key("anthropic")
 	client := anthropic.NewClient(api_key)
 
 	return &Anthropic{API_Key: api_key, Tokens: max_tokens, Client: client}
@@ -26,6 +24,7 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 
 	resp, err := client.CreateMessagesStream(context.Background(), anthropic.MessagesStreamRequest{
 		MessagesRequest: anthropic.MessagesRequest{
+			// TODO: figure out how to specify different anthropic models
 			Model: anthropic.ModelClaudeInstant1Dot2,
 			Messages: []anthropic.Message{
 				anthropic.NewUserTextMessage(prompt),
@@ -50,27 +49,4 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 	log.WriteString("\n<------>\n")
 
 	return nil
-}
-
-func get_anthropic_key() string {
-	key := os.Getenv("ANTHROPIC_API_KEY")
-	home := os.Getenv("HOME")
-	if key == "" {
-		file, err := os.Open(home + "/.config/ask-ai/anthropic-api-key")
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		if scanner.Scan() {
-			key = scanner.Text()
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-	}
-	return key
 }

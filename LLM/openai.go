@@ -1,17 +1,15 @@
 package LLM
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 )
 
 func New_OpenAI(max_tokens int) *OpenAI {
-	api_key := get_openai_key()
+	api_key := get_client_key("openai")
 	client := openai.NewClient(option.WithAPIKey(api_key))
 
 	return &OpenAI{API_Key: api_key, Tokens: max_tokens, Client: client}
@@ -58,27 +56,4 @@ func (cs *OpenAI) Chat(args Client_Args) error {
 	}
 
 	return nil
-}
-
-func get_openai_key() string {
-	key := os.Getenv("OPENAI_API_KEY")
-	home := os.Getenv("HOME")
-	if key == "" {
-		file, err := os.Open(home + "/.config/ask-ai/openai-api-key")
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		if scanner.Scan() {
-			key = scanner.Text()
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-	}
-	return key
 }
