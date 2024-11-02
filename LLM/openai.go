@@ -10,12 +10,14 @@ import (
 	"github.com/openai/openai-go/option"
 )
 
-func New_Client() *openai.Client {
+func New_OpenAI(max_tokens int) *OpenAI {
 	api_key := get_openai_key()
-	return openai.NewClient(option.WithAPIKey(api_key))
+	return &OpenAI{API_Key: api_key, Tokens: max_tokens}
 }
 
-func Chat(client *openai.Client, args Client_Args) error {
+func (cs *OpenAI) Chat(args Client_Args) error {
+	client := openai.NewClient(option.WithAPIKey(cs.API_Key))
+
 	log := args.Log
 
 	ctx := context.Background()
@@ -37,7 +39,7 @@ func Chat(client *openai.Client, args Client_Args) error {
 	// across the entire screen.
 	// TODO: make the `log` an aggregate of streams, as in the TODO for the
 	// main app; so that it's not just going to stdout by default
-	log.WriteString("ChatGPT: ")
+	log.WriteString("Assistant: ")
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {

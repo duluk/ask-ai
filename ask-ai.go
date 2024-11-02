@@ -1,12 +1,11 @@
 package main
 
 // TODO:
-// - Add a flag to specify the model to use
 // - Add a flag to specify the chat log file
 // - Read the chat log for context possibilities
-//   - That is, could add a flag to read the last n messages for context
+//   - A flag exists for this, but it's not implemented yet
 // - Create an output class/struct or something that can receive different
-//   'stream' objects so that one output functoin can be called, then it will
+//   'stream' objects so that one output function can be called, then it will
 //   send the output to all attached streams. (eg, stdout, log file, etc)
 
 import (
@@ -20,8 +19,8 @@ import (
 
 // func chat_with_openai(prompt string, context int, max_tokens int, log *os.File) {
 func chat_with_openai(args LLM.Client_Args) {
-	client := LLM.New_Client()
-	err := LLM.Chat(client, args)
+	client := LLM.New_OpenAI(args.Max_Tokens)
+	err := client.Chat(args)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
@@ -29,13 +28,12 @@ func chat_with_openai(args LLM.Client_Args) {
 
 // func chat_with_sonnet(prompt string, context int, max_tokens int, log *os.File) {
 func chat_with_sonnet(args LLM.Client_Args) {
-	cs := LLM.New_Claude(args.Max_tokens)
-	resp, err := cs.Chat(args)
+	client := LLM.New_Anthropic(args.Max_Tokens)
+	err := client.Chat(args)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
 	}
-	fmt.Println("Claude: ", resp)
 }
 
 func main() {
@@ -69,7 +67,7 @@ func main() {
 	client_args := LLM.Client_Args{
 		Prompt:     prompt,
 		Context:    *context,
-		Max_tokens: *max_tokens,
+		Max_Tokens: *max_tokens,
 		Log:        log,
 	}
 
