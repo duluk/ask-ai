@@ -12,12 +12,13 @@ import (
 
 func New_OpenAI(max_tokens int) *OpenAI {
 	api_key := get_openai_key()
-	return &OpenAI{API_Key: api_key, Tokens: max_tokens}
+	client := openai.NewClient(option.WithAPIKey(api_key))
+
+	return &OpenAI{API_Key: api_key, Tokens: max_tokens, Client: client}
 }
 
 func (cs *OpenAI) Chat(args Client_Args) error {
-	client := openai.NewClient(option.WithAPIKey(cs.API_Key))
-
+	client := cs.Client
 	log := args.Log
 
 	ctx := context.Background()

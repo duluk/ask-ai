@@ -14,14 +14,15 @@ import (
 
 func New_Anthropic(max_tokens int) *Anthropic {
 	api_key := get_anthropic_key()
-	return &Anthropic{API_Key: api_key, Tokens: max_tokens}
+	client := anthropic.NewClient(api_key)
+
+	return &Anthropic{API_Key: api_key, Tokens: max_tokens, Client: client}
 }
 
 func (cs *Anthropic) Chat(args Client_Args) error {
-	client := anthropic.NewClient(cs.API_Key)
-
 	prompt := args.Prompt
 	log := args.Log
+	client := cs.Client
 
 	resp, err := client.CreateMessagesStream(context.Background(), anthropic.MessagesStreamRequest{
 		MessagesRequest: anthropic.MessagesRequest{

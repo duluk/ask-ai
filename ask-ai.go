@@ -54,12 +54,19 @@ func main() {
 	defer log.Close()
 
 	var prompt string
+	// NArg is for positional arguments, so it can accept a prompt as a
+	// positional string argument
 	if flag.NArg() > 0 {
 		prompt = flag.Arg(0)
 	} else {
+		fmt.Println("Using model:", *model)
 		fmt.Print("> ")
 		reader := bufio.NewReader(os.Stdin)
-		prompt, _ = reader.ReadString('\n')
+		prompt, err = reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading prompt: ", err)
+			os.Exit(1)
+		}
 		fmt.Println()
 	}
 	log.WriteString("User: " + prompt + "\n\n")
