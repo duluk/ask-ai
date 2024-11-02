@@ -1,63 +1,91 @@
 package main
 
 // TODO:
-// - Add a flag to specify the model to use
 // - Add a flag to specify the chat log file
 // - Read the chat log for context possibilities
-//   - That is, could add a flag to read the last n messages for context
+//   - A flag exists for this, but it's not implemented yet
 // - Create an output class/struct or something that can receive different
-//   'stream' objects so that one output functoin can be called, then it will
+//   'stream' objects so that one output function can be called, then it will
 //   send the output to all attached streams. (eg, stdout, log file, etc)
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 
 	"github.com/duluk/ask-ai/LLM"
 )
 
-func main() {
-	key := os.Getenv("OPENAI_API_KEY")
-	home := os.Getenv("HOME")
-	if key == "" {
-		file, err := os.Open(home + "/.config/ask-ai/openai-api-key")
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		if scanner.Scan() {
-			key = scanner.Text()
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
+// func chat_with_openai(prompt string, context int, max_tokens int, log *os.File) {
+func chat_with_openai(args LLM.Client_Args) {
+	client := LLM.New_OpenAI(args.Max_Tokens)
+	err := client.Chat(args)
+	if err != nil {
+		fmt.Println("Error: ", err)
 	}
+}
 
-	log, err := os.OpenFile(home+"/.config/ask-ai/ask-ai.chat.log", os.O_APPEND|os.O_RDWR, 0644)
+// func chat_with_sonnet(prompt string, context int, max_tokens int, log *os.File) {
+func chat_with_sonnet(args LLM.Client_Args) {
+	client := LLM.New_Anthropic(args.Max_Tokens)
+	err := client.Chat(args)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+}
+
+func main() {
+	HOME := os.Getenv("HOME")
+
+	model := flag.String("model", "sonnet", "Which LLM to use (sonnet|chatgpt)")
+	log_fn := flag.String("log", HOME+"/.config/ask-ai/ask-ai.chat.log", "Chat log file")
+	context := flag.Int("context", 0, "Use n previous messages for context")
+	max_tokens := flag.Int("max-tokens", 1024, "Maximum tokens to generate")
+
+	flag.Parse()
+
+	log, err := os.OpenFile(*log_fn, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		fmt.Println("Error opening/creating chat log file: ", err)
 		fmt.Println("CHAT WILL NOT BE SAVED (but we're forging on)")
 	}
+	defer log.Close()
 
 	var prompt string
-	if len(os.Args) > 1 {
-		prompt = os.Args[1]
+	// NArg is for positional arguments, so it can accept a prompt as a
+	// positional string argument
+	if flag.NArg() > 0 {
+		prompt = flag.Arg(0)
 	} else {
+		fmt.Println("Using model:", *model)
 		fmt.Print("> ")
 		reader := bufio.NewReader(os.Stdin)
-		prompt, _ = reader.ReadString('\n')
+		prompt, err = reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading prompt: ", err)
+			os.Exit(1)
+		}
 		fmt.Println()
 	}
 	log.WriteString("User: " + prompt + "\n\n")
 
-	client := LLM.New_Client(key)
-	err = LLM.Chat(client, prompt, log)
-	if err != nil {
-		fmt.Println("Error: ", err)
+	client_args := LLM.Client_Args{
+		Prompt:     prompt,
+		Context:    *context,
+		Max_Tokens: *max_tokens,
+		Log:        log,
+	}
+
+	switch *model {
+	case "sonnet":
+		// chat_with_sonnet(prompt, *context, *max_tokens, log)
+		chat_with_sonnet(client_args)
+	case "chatgpt":
+		// chat_with_openai(prompt, *context, *max_tokens, log)
+		chat_with_openai(client_args)
+	default:
+		fmt.Println("Unknown model: ", *model)
 	}
 }
