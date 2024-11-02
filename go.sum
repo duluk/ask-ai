@@ -1,3 +1,5 @@
+github.com/liushuangls/go-anthropic/v2 v2.9.1 h1:95Ff9/AVkgJii+cSS2bxqrBev3v1vOro0K8bl5m/2Lo=
+github.com/liushuangls/go-anthropic/v2 v2.9.1/go.mod h1:8BKv/fkeTaL5R9R9bGkaknYBueyw2WxY20o7bImbOek=
 github.com/openai/openai-go v0.1.0-alpha.30 h1:lhQyCwK0Be0lGyLiCv4yV3pRaOrn8KlF0QQBhJzY0GI=
 github.com/openai/openai-go v0.1.0-alpha.30/go.mod h1:3SdE6BffOX9HPEQv8IL/fi3LYZ5TUpRYaqGQZbyk11A=
 github.com/tidwall/gjson v1.14.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=

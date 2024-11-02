@@ -4,20 +4,55 @@ package LLM
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/liushuangls/go-anthropic/v2"
 )
 
-func New_Claude_Sonnet(max_tokens int) *Claude_Sonnet {
+func New_Claude(max_tokens int) *Claude {
 	api_key := get_anthropic_key()
-	return &Claude_Sonnet{API_Key: api_key, Tokens: max_tokens}
+	return &Claude{API_Key: api_key, Tokens: max_tokens}
 }
 
-func (cs *Claude_Sonnet) Chat(args Client_Args) (string, error) {
+func (cs *Claude) Chat(args Client_Args) (string, error) {
+	client := anthropic.NewClient(cs.API_Key)
+
+	prompt := args.Prompt
+	// log := args.Log
+
+	resp, err := client.CreateMessagesStream(context.Background(), anthropic.MessagesStreamRequest{
+		MessagesRequest: anthropic.MessagesRequest{
+			Model: anthropic.ModelClaudeInstant1Dot2,
+			Messages: []anthropic.Message{
+				anthropic.NewUserTextMessage(prompt),
+			},
+			MaxTokens: 1000,
+		},
+		OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
+			fmt.Printf("Stream Content: %s\n", data.Delta.Text)
+			// log.WriteString("Claude: " + data.Delta.Text + "\n\n")
+		},
+	})
+	if err != nil {
+		var e *anthropic.APIError
+		if errors.As(err, &e) {
+			fmt.Printf("Messages stream error, type: %s, message: %s", e.Type, e.Message)
+		} else {
+			fmt.Printf("Messages stream error: %v\n", err)
+		}
+		return "", err
+	}
+
+	return resp.Content[0].GetText(), nil
+}
+
+func (cs *Claude) first_Chat(args Client_Args) (string, error) {
 	url := "https://api.openai.com/v1/engines/claude/complete"
 
 	prompt := args.Prompt
@@ -28,6 +63,7 @@ func (cs *Claude_Sonnet) Chat(args Client_Args) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println("Using API Key: '" + cs.API_Key + "'")
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Bearer "+cs.API_Key)
 

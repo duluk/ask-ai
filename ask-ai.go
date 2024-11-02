@@ -29,10 +29,11 @@ func chat_with_openai(args LLM.Client_Args) {
 
 // func chat_with_sonnet(prompt string, context int, max_tokens int, log *os.File) {
 func chat_with_sonnet(args LLM.Client_Args) {
-	cs := LLM.New_Claude_Sonnet(args.Max_tokens)
+	cs := LLM.New_Claude(args.Max_tokens)
 	resp, err := cs.Chat(args)
 	if err != nil {
 		fmt.Println("Error: ", err)
+		os.Exit(1)
 	}
 	fmt.Println("Claude: ", resp)
 }

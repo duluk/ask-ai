@@ -2,7 +2,10 @@ module github.com/duluk/ask-ai
 
 go 1.22.7
 
-require github.com/openai/openai-go v0.1.0-alpha.30
+require (
+	github.com/liushuangls/go-anthropic/v2 v2.9.1
+	github.com/openai/openai-go v0.1.0-alpha.30
+)
 
 require (
 	github.com/tidwall/gjson v1.14.4 // indirect
