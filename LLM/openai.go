@@ -16,14 +16,14 @@ func New_Client() *openai.Client {
 }
 
 func Chat(client *openai.Client, args Client_Args) error {
-	log := args.log
+	log := args.Log
 
 	ctx := context.Background()
 	stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			// To use context from previous responses, use AssistantMessage:
 			// openai.AssistantMessage(msg_context),
-			openai.UserMessage(args.prompt),
+			openai.UserMessage(args.Prompt),
 		}),
 		Seed:  openai.Int(1),
 		Model: openai.F(openai.ChatModelGPT4o),

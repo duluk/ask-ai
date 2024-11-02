@@ -2,14 +2,16 @@ package LLM
 
 import "os"
 
+// These fields need to have capital lettesr to be exported (ugh)
+
 type Claude_Sonnet struct {
 	API_Key string
-	tokens  int
+	Tokens  int
 }
 
 type Client_Args struct {
-	prompt     string
-	context    int
-	max_tokens int
-	log        *os.File
+	Prompt     string
+	Context    int
+	Max_tokens int
+	Log        *os.File
 }

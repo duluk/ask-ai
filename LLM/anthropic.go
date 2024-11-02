@@ -14,16 +14,16 @@ import (
 
 func New_Claude_Sonnet(max_tokens int) *Claude_Sonnet {
 	api_key := get_anthropic_key()
-	return &Claude_Sonnet{API_Key: api_key, tokens: max_tokens}
+	return &Claude_Sonnet{API_Key: api_key, Tokens: max_tokens}
 }
 
 func (cs *Claude_Sonnet) Chat(args Client_Args) (string, error) {
 	url := "https://api.openai.com/v1/engines/claude/complete"
 
-	prompt := args.prompt
-	log := args.log
+	prompt := args.Prompt
+	log := args.Log
 
-	payload := strings.NewReader(`{"prompt":"` + prompt + `","max_tokens":` + string(cs.tokens) + `}`)
+	payload := strings.NewReader(`{"prompt":"` + prompt + `","max_tokens":` + string(cs.Tokens) + `}`)
 	req, err := http.NewRequest("POST", url, payload)
 	if err != nil {
 		return "", err
