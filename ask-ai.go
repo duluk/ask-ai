@@ -9,6 +9,7 @@ package main
 //   send the output to all attached streams. (eg, stdout, log file, etc)
 // - Add configuration file initially for providing the option for storing chat
 //   results in a DB
+// - How would this app be tested?
 
 import (
 	"bufio"
