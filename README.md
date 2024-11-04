@@ -15,23 +15,34 @@ $ go mod tidy
 $ go build ask-ai.go
 ```
 
+Or, as I'm doing now (bc I'm old):
+```bash
+$ make build
+```
+
 ## Usage
 
-* Set OPENAI_API_KEY in your environment or put it in a file located at `$HOME/.config/ask-ai/openai-api-key`
+#### Set the API Key
+1. Set {OPENAI,ANTHROPIC}_API_KEY in your environment; or
+1. Put the key in a file located at `$HOME/.config/ask-ai/{openai,anthropic,google}-api-key`
 
+#### Ask a model a question
 ```bash
-$ ./ask-ai "What is the best chess opening for a beginner?"
+$ bin/ask-ai "What is the best chess opening for a beginner?"
 ```
 
 * If no query is provided, ask-ai will prompt for one:
 ```
-$ ./ask-ai
+$ bin/ask-ai
 > What is the best chess opening for a checkers player?
+```
+
+* You can provide a model with `--model <model>`:
+```bash
+$ bin/ask-ai --model gemini "Why do you pull in so many modules for th Go API?"
 ```
 
 ### [NOTE]
 > This is a work in progress and not all functionality has been added.
-> For instance, currently it supports only ChatGPT. I plan to add flags for
-> other LLMs at some point.
 >
 > I also plan to provide a flag for context - that is, use the last `n` queries to send to the LLM for context.
