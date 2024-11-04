@@ -10,6 +10,10 @@ package main
 // - Add configuration file initially for providing the option for storing chat
 //   results in a DB
 // - How would this app be tested?
+// - Add --compare flag to use mulitple models and compare the results
+// - Add --system-prompt flag to allow the creation of a system prompt
+// - Add support for --image and --file attachments
+// - Add a config file for models and system prompts
 
 import (
 	"bufio"
@@ -29,6 +33,15 @@ func chat_with_openai(args LLM.Client_Args) {
 	}
 }
 
+func chat_with_google(args LLM.Client_Args) {
+	client := LLM.New_Google(args.Max_Tokens)
+	err := client.Chat(args)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+}
+
 func chat_with_sonnet(args LLM.Client_Args) {
 	client := LLM.New_Anthropic(args.Max_Tokens)
 	err := client.Chat(args)
@@ -41,7 +54,7 @@ func chat_with_sonnet(args LLM.Client_Args) {
 func main() {
 	HOME := os.Getenv("HOME")
 
-	model := flag.String("model", "sonnet", "Which LLM to use (sonnet|chatgpt)")
+	model := flag.String("model", "sonnet", "Which LLM to use (sonnet|chatgpt|gemini)")
 	log_fn := flag.String("log", HOME+"/.config/ask-ai/ask-ai.chat.log", "Chat log file")
 	context := flag.Int("context", 0, "Use n previous messages for context")
 	max_tokens := flag.Int("max-tokens", 1024, "Maximum tokens to generate")
@@ -85,6 +98,8 @@ func main() {
 		chat_with_sonnet(client_args)
 	case "chatgpt":
 		chat_with_openai(client_args)
+	case "gemini":
+		chat_with_google(client_args)
 	default:
 		fmt.Println("Unknown model: ", *model)
 	}

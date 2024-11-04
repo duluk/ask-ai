@@ -1,8 +1,10 @@
 package LLM
 
 import (
+	"context"
 	"os"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/liushuangls/go-anthropic/v2"
 	"github.com/openai/openai-go"
 )
@@ -19,6 +21,13 @@ type OpenAI struct {
 	API_Key string
 	Tokens  int
 	Client  *openai.Client
+}
+
+type Google struct {
+	API_Key string
+	Tokens  int
+	Client  *genai.Client
+	Context context.Context
 }
 
 type Client_Args struct {
