@@ -7,13 +7,16 @@ package main
 // - Create an output class/struct or something that can receive different
 //   'stream' objects so that one output function can be called, then it will
 //   send the output to all attached streams. (eg, stdout, log file, etc)
-// - Add configuration file initially for providing the option for storing chat
-//   results in a DB
+// - Add configuration file for:
+//   * providing the option for storing chat results in a DB
+//   * storing model and system prompt information
 // - How would this app be tested?
 // - Add --compare flag to use mulitple models and compare the results
 // - Add --system-prompt flag to allow the creation of a system prompt
-// - Add support for --image and --file attachments
-// - Add a config file for models and system prompts
+// - Add support for --image and --file attachments for multi-modal models
+// - Add the model name to the bottom of the chat log output
+// - Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
+//   `--model chatgpt`
 
 import (
 	"bufio"
