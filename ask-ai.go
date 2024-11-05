@@ -7,6 +7,8 @@ package main
 // - Create an output class/struct or something that can receive different
 //   'stream' objects so that one output function can be called, then it will
 //   send the output to all attached streams. (eg, stdout, log file, etc)
+// - Consider something similar to the above for the backend model itself. This
+//   would allow the --compare flag mentioned below to be implemented.
 // - Add configuration file for:
 //   * providing the option for storing chat results in a DB
 //   * storing model and system prompt information
