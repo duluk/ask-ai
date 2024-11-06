@@ -29,26 +29,20 @@ import (
 	"github.com/duluk/ask-ai/LLM"
 )
 
-func chat_with_openai(args LLM.Client_Args) {
-	client := LLM.New_OpenAI(args.Max_Tokens)
-	err := client.Chat(args)
-	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(1)
-	}
-}
+func chat_with_llm(model string, args LLM.Client_Args) {
+	var client LLM.Client
 
-func chat_with_google(args LLM.Client_Args) {
-	client := LLM.New_Google(args.Max_Tokens)
-	err := client.Chat(args)
-	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(1)
+	switch model {
+	case "chatgpt":
+		client = LLM.New_OpenAI(args.Max_Tokens)
+	case "sonnet":
+		client = LLM.New_Anthropic(args.Max_Tokens)
+	case "gemini":
+		client = LLM.New_Google(args.Max_Tokens)
+	default:
+		fmt.Println("Unknown model: ", model)
 	}
-}
 
-func chat_with_sonnet(args LLM.Client_Args) {
-	client := LLM.New_Anthropic(args.Max_Tokens)
 	err := client.Chat(args)
 	if err != nil {
 		fmt.Println("Error: ", err)
@@ -98,14 +92,5 @@ func main() {
 		Log:        log,
 	}
 
-	switch *model {
-	case "sonnet":
-		chat_with_sonnet(client_args)
-	case "chatgpt":
-		chat_with_openai(client_args)
-	case "gemini":
-		chat_with_google(client_args)
-	default:
-		fmt.Println("Unknown model: ", *model)
-	}
+	chat_with_llm(*model, client_args)
 }

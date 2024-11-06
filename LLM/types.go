@@ -11,6 +11,10 @@ import (
 
 // These fields need to have capital lettesr to be exported (ugh)
 
+type Client interface {
+	Chat(args Client_Args) error
+}
+
 type Anthropic struct {
 	API_Key string
 	Tokens  int
