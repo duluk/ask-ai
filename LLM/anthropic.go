@@ -48,7 +48,6 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 	}
 	println()
 	log.WriteString("Assistant: " + resp.Content[0].GetText())
-	log.WriteString("\n<------>\n")
 
 	return nil
 }

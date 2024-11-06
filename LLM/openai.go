@@ -49,8 +49,6 @@ func (cs *OpenAI) Chat(args Client_Args) error {
 			log.WriteString(data)
 		}
 	}
-	println()
-	log.WriteString("\n<------>\n")
 
 	if stream.Err() != nil {
 		fmt.Printf("Error: %s\n", stream.Err())

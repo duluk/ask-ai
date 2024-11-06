@@ -16,7 +16,6 @@ package main
 // - Add --compare flag to use mulitple models and compare the results
 // - Add --system-prompt flag to allow the creation of a system prompt
 // - Add support for --image and --file attachments for multi-modal models
-// - Add the model name to the bottom of the chat log output
 // - Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
 //   `--model chatgpt`
 
@@ -93,4 +92,7 @@ func main() {
 	}
 
 	chat_with_llm(*model, client_args)
+
+	footer := fmt.Sprintf("\n\n<model - %s>\n<------>\n", *model)
+	log.WriteString(footer)
 }

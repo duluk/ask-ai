@@ -67,7 +67,6 @@ func (cs *Google) Chat(args Client_Args) error {
 		print(r)
 		log.WriteString(r)
 	}
-	log.WriteString("\n<------>\n")
 
 	return nil
 }
