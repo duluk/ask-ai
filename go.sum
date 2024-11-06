@@ -64,8 +64,8 @@ github.com/googleapis/enterprise-certificate-proxy v0.3.4 h1:XYIDZApgAnrN1c855gT
 github.com/googleapis/enterprise-certificate-proxy v0.3.4/go.mod h1:YKe7cfqYXjKGpGvmSg28/fFvhNzinZQm8DGnaburhGA=
 github.com/googleapis/gax-go/v2 v2.13.0 h1:yitjD5f7jQHhyDsnhKEBU52NdvvdSeGzlAnDPT0hH1s=
 github.com/googleapis/gax-go/v2 v2.13.0/go.mod h1:Z/fvTZXF8/uw7Xu5GuslPw+bplx6SS338j1Is2S+B7A=
-github.com/liushuangls/go-anthropic/v2 v2.9.1 h1:95Ff9/AVkgJii+cSS2bxqrBev3v1vOro0K8bl5m/2Lo=
-github.com/liushuangls/go-anthropic/v2 v2.9.1/go.mod h1:8BKv/fkeTaL5R9R9bGkaknYBueyw2WxY20o7bImbOek=
+github.com/liushuangls/go-anthropic/v2 v2.10.0 h1:S/qPNa68iOK1S4LDo84AiRg4CIt6ln8WOkuhesS9HKE=
+github.com/liushuangls/go-anthropic/v2 v2.10.0/go.mod h1:8BKv/fkeTaL5R9R9bGkaknYBueyw2WxY20o7bImbOek=
 github.com/openai/openai-go v0.1.0-alpha.30 h1:lhQyCwK0Be0lGyLiCv4yV3pRaOrn8KlF0QQBhJzY0GI=
 github.com/openai/openai-go v0.1.0-alpha.30/go.mod h1:3SdE6BffOX9HPEQv8IL/fi3LYZ5TUpRYaqGQZbyk11A=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

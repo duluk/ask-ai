@@ -4,7 +4,7 @@ go 1.22.7
 
 require (
 	github.com/google/generative-ai-go v0.18.0
-	github.com/liushuangls/go-anthropic/v2 v2.9.1
+	github.com/liushuangls/go-anthropic/v2 v2.10.0
 	github.com/openai/openai-go v0.1.0-alpha.30
 	google.golang.org/api v0.204.0
 )

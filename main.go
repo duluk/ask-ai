@@ -8,7 +8,7 @@ package main
 //   send the output to all attached streams. (eg, stdout, log file, etc)
 // - Consider something similar to the above for the backend model itself. This
 //   would allow the --compare flag mentioned below to be implemented.
-// - Add configuration file for:
+// - Add configuration file for -
 //   * providing the option for storing chat results in a DB
 //   * storing model and system prompt information
 // - How would this app be tested?
@@ -17,6 +17,9 @@ package main
 // - Add support for --image and --file attachments for multi-modal models
 // - Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
 //   `--model chatgpt`
+//
+// - Version 2.0:
+// - Add a TUI interface (using charm?) so the output looks good
 
 import (
 	"bufio"

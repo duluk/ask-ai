@@ -27,7 +27,8 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 		anthropic.MessagesStreamRequest{
 			MessagesRequest: anthropic.MessagesRequest{
 				// TODO: figure out how to specify different anthropic models
-				Model: anthropic.ModelClaude3Dot5Sonnet20241022,
+				// Model: anthropic.ModelClaude3Dot5Sonnet20241022,
+				Model: anthropic.ModelClaude3Dot5Haiku20241022,
 				Messages: []anthropic.Message{
 					anthropic.NewUserTextMessage(prompt),
 				},
