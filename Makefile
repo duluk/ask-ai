@@ -2,6 +2,7 @@
 # Makefile for the ask-ai project.
 
 PROJECT_NAME := ask-ai
+INSTALL_PATH := $(HOME)/go/bin
 
 SRC_FILES := $(wildcard *.go)
 BIN_FILES := $(patsubst %.go,bin/%,$(SRC_FILES))
@@ -26,6 +27,9 @@ build: $(BIN_FILEs) $(PKG_FILES)
 
 run: $(BIN_FILES)
 	./bin/$(PROJECT_NAME)
+
+install: bin/$(PROJECT_NAME)
+	cp bin/$(PROJECT_NAME) $(INSTALL_PATH)/$(PROJECT_NAME)
 
 bin/%: src/%.go
 	$(GO) build $(GOFLAGS) -o $@ $<
