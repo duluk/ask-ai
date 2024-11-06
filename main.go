@@ -1,7 +1,6 @@
 package main
 
 // TODO:
-// - Add a flag to specify the chat log file
 // - Read the chat log for context possibilities
 //   - A flag exists for this, but it's not implemented yet
 // - Create an output class/struct or something that can receive different
