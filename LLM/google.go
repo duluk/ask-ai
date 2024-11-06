@@ -41,7 +41,6 @@ func (cs *Google) Simple_Chat(args Client_Args) error {
 }
 
 // Some configuration options for the model:
-// model.SetTemperature(0.5)
 // model.SetTopP(0.9)
 // model.SetTopK(40)
 // model.SystemInstruction = genai.NewUserContent(genai.Text("You are Yoda from Star Wars."))
@@ -52,9 +51,11 @@ func (cs *Google) Chat(args Client_Args) error {
 	log := args.Log
 
 	model := client.GenerativeModel("gemini-1.5-pro")
+	model.SetTemperature(0.3)
 	model.SetMaxOutputTokens(int32(args.Max_Tokens))
-	iter := model.GenerateContentStream(ctx, genai.Text(args.Prompt))
+
 	log.WriteString("Assistant: ")
+	iter := model.GenerateContentStream(ctx, genai.Text(args.Prompt))
 	for {
 		resp, err := iter.Next()
 		if err == iterator.Done {
