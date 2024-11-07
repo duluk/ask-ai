@@ -14,10 +14,7 @@
    itself. This would allow the --compare flag mentioned below to be
    implemented.
 
-
 1. Add --system-prompt flag to allow the creation of a system prompt
-
-1. Add support for --image and --file attachments for multi-modal models
 
 1. Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
   `--model chatgpt`
@@ -37,3 +34,4 @@ CREATE TABLE interactions (
 
 ## Version 2.0:
 1. Add a TUI interface (using charm?) so the output looks good
+1. Add support for --image and --file attachments for multi-modal models
