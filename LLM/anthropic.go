@@ -22,7 +22,8 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 	out := args.Out
 	client := cs.Client
 
-	resp, err := client.CreateMessagesStream(
+	out.Printf("Assistant: ")
+	_, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
 			MessagesRequest: anthropic.MessagesRequest{
@@ -48,7 +49,6 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 		return err
 	}
 	out.Nl()
-	out.Printf("Assistant: " + resp.Content[0].GetText())
 
 	return nil
 }
