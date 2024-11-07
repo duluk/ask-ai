@@ -3,9 +3,44 @@ package LLM
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
+
+type Output_Stream struct {
+	writers map[string]io.Writer
+}
+
+func New_Output_Stream() *Output_Stream {
+	return &Output_Stream{writers: make(map[string]io.Writer)}
+}
+
+func (ostr *Output_Stream) Add_Stream(name string, writer io.Writer) {
+	ostr.writers[name] = writer
+}
+
+func (ostr *Output_Stream) Remove_Stream(name string) {
+	delete(ostr.writers, name)
+}
+
+func (ostr *Output_Stream) Write(p []byte) (n int, err error) {
+	for _, writer := range ostr.writers {
+		n, err = writer.Write(p)
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
+}
+
+func (ostr *Output_Stream) Printf(format string, a ...interface{}) (n int, err error) {
+	return fmt.Fprintf(ostr, format, a...)
+}
+
+func (ostr *Output_Stream) Nl() (n int, err error) {
+	return fmt.Fprintln(ostr)
+}
 
 func get_client_key(llm string) string {
 	key_upper := strings.ToUpper(llm) + "_API_KEY"

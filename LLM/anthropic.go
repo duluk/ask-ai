@@ -19,7 +19,7 @@ func New_Anthropic(max_tokens int) *Anthropic {
 
 func (cs *Anthropic) Chat(args Client_Args) error {
 	prompt := args.Prompt
-	log := args.Log
+	out := args.Out
 	client := cs.Client
 
 	resp, err := client.CreateMessagesStream(
@@ -32,10 +32,10 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 				Messages: []anthropic.Message{
 					anthropic.NewUserTextMessage(prompt),
 				},
-				MaxTokens: 1000,
+				MaxTokens: args.Max_Tokens,
 			},
 			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
-				print(*data.Delta.Text)
+				out.Printf(*data.Delta.Text)
 			},
 		})
 	if err != nil {
@@ -47,8 +47,8 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 		}
 		return err
 	}
-	println()
-	log.WriteString("Assistant: " + resp.Content[0].GetText())
+	out.Nl()
+	out.Printf("Assistant: " + resp.Content[0].GetText())
 
 	return nil
 }

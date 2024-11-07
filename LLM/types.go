@@ -2,7 +2,6 @@ package LLM
 
 import (
 	"context"
-	"os"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/liushuangls/go-anthropic/v2"
@@ -38,5 +37,5 @@ type Client_Args struct {
 	Prompt     string
 	Context    int
 	Max_Tokens int
-	Log        *os.File
+	Out        *Output_Stream
 }

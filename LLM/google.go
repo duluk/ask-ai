@@ -2,7 +2,6 @@ package LLM
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
@@ -23,7 +22,7 @@ func New_Google(max_tokens int) *Google {
 func (cs *Google) Simple_Chat(args Client_Args) error {
 	client := cs.Client
 	ctx := cs.Context
-	log := args.Log
+	out := args.Out
 
 	model := client.GenerativeModel("gemini-1.5-pro")
 	model.SetMaxOutputTokens(int32(args.Max_Tokens))
@@ -32,10 +31,8 @@ func (cs *Google) Simple_Chat(args Client_Args) error {
 		return err
 	}
 
-	fmt.Println(resp.Candidates[0].Content.Parts[0])
-	log_resp := fmt.Sprintf("Assistant: %s\n", resp.Candidates[0].Content.Parts[0])
-	log.WriteString(log_resp)
-	log.WriteString("\n<------>\n")
+	out.Printf("%s", resp.Candidates[0].Content.Parts[0])
+	out.Printf("\n<------>\n")
 
 	return nil
 }
@@ -48,13 +45,13 @@ func (cs *Google) Simple_Chat(args Client_Args) error {
 func (cs *Google) Chat(args Client_Args) error {
 	client := cs.Client
 	ctx := cs.Context
-	log := args.Log
+	out := args.Out
 
 	model := client.GenerativeModel("gemini-1.5-pro")
 	model.SetTemperature(0.3)
 	model.SetMaxOutputTokens(int32(args.Max_Tokens))
 
-	log.WriteString("Assistant: ")
+	out.Printf("Assistant: ")
 	iter := model.GenerateContentStream(ctx, genai.Text(args.Prompt))
 	for {
 		resp, err := iter.Next()
@@ -64,9 +61,7 @@ func (cs *Google) Chat(args Client_Args) error {
 		if err != nil {
 			return err
 		}
-		r := fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
-		print(r)
-		log.WriteString(r)
+		out.Printf("%s", resp.Candidates[0].Content.Parts[0])
 	}
 
 	return nil
