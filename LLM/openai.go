@@ -17,7 +17,7 @@ func New_OpenAI(max_tokens int) *OpenAI {
 
 func (cs *OpenAI) Chat(args Client_Args) error {
 	client := cs.Client
-	log := args.Log
+	out := args.Out
 
 	ctx := context.Background()
 	stream := client.Chat.Completions.NewStreaming(
@@ -28,8 +28,9 @@ func (cs *OpenAI) Chat(args Client_Args) error {
 				// openai.AssistantMessage(msg_context),
 				openai.UserMessage(args.Prompt),
 			}),
-			Seed:  openai.Int(1),
-			Model: openai.F(openai.ChatModelGPT4o),
+			Seed:      openai.Int(1),
+			Model:     openai.F(openai.ChatModelGPT4o),
+			MaxTokens: openai.Int(int64(args.Max_Tokens)),
 		})
 
 	// Apparently what happens with stream is that the server chunks the
@@ -40,13 +41,12 @@ func (cs *OpenAI) Chat(args Client_Args) error {
 	// across the entire screen.
 	// TODO: make the `log` an aggregate of streams, as in the TODO for the
 	// main app; so that it's not just going to stdout by default
-	log.WriteString("Assistant: ")
+	out.Printf("Assistant: ")
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {
 			data := evt.Choices[0].Delta.Content
-			print(data)
-			log.WriteString(data)
+			out.Printf(data)
 		}
 	}
 

@@ -6,6 +6,7 @@ package main
 // - Create an output class/struct or something that can receive different
 //   'stream' objects so that one output function can be called, then it will
 //   send the output to all attached streams. (eg, stdout, log file, etc)
+//     **DONE**
 // - Consider something similar to the above for the backend model itself. This
 //   would allow the --compare flag mentioned below to be implemented.
 // - Add configuration file for -
@@ -57,7 +58,7 @@ func main() {
 	model := flag.String("model", "sonnet", "Which LLM to use (sonnet|chatgpt|gemini)")
 	log_fn := flag.String("log", HOME+"/.config/ask-ai/ask-ai.chat.log", "Chat log file")
 	context := flag.Int("context", 0, "Use n previous messages for context")
-	max_tokens := flag.Int("max-tokens", 1024, "Maximum tokens to generate")
+	max_tokens := flag.Int("max-tokens", 4096, "Maximum tokens to generate")
 
 	flag.Parse()
 
@@ -68,9 +69,14 @@ func main() {
 	}
 	defer log.Close()
 
+	var ostr *LLM.Output_Stream
+	ostr = LLM.New_Output_Stream()
+	ostr.Add_Stream("stdout", os.Stdout)
+	if log != nil {
+		ostr.Add_Stream("log", log)
+	}
+
 	var prompt string
-	// NArg is for positional arguments, so it can accept a prompt as a
-	// positional string argument
 	if flag.NArg() > 0 {
 		prompt = flag.Arg(0)
 	} else {
@@ -84,17 +90,16 @@ func main() {
 		}
 		fmt.Println()
 	}
-	log.WriteString("User: " + prompt + "\n\n")
+	ostr.Printf("User: " + prompt + "\n\n")
 
 	client_args := LLM.Client_Args{
 		Prompt:     prompt,
 		Context:    *context,
 		Max_Tokens: *max_tokens,
-		Log:        log,
+		Out:        ostr,
 	}
 
 	chat_with_llm(*model, client_args)
 
-	footer := fmt.Sprintf("\n\n<model - %s>\n<------>\n", *model)
-	log.WriteString(footer)
+	ostr.Printf("\n\n<model - %s>\n<------>\n", *model)
 }
