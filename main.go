@@ -9,13 +9,15 @@ import (
 	"github.com/duluk/ask-ai/LLM"
 )
 
+// I'm probably writing "Ruby Go"...
+
 func chat_with_llm(model string, args LLM.Client_Args) {
 	var client LLM.Client
 
 	switch model {
 	case "chatgpt":
 		client = LLM.New_OpenAI(args.Max_Tokens)
-	case "sonnet":
+	case "claude":
 		client = LLM.New_Anthropic(args.Max_Tokens)
 	case "gemini":
 		client = LLM.New_Google(args.Max_Tokens)
@@ -33,7 +35,7 @@ func chat_with_llm(model string, args LLM.Client_Args) {
 func main() {
 	HOME := os.Getenv("HOME")
 
-	model := flag.String("model", "sonnet", "Which LLM to use (sonnet|chatgpt|gemini)")
+	model := flag.String("model", "claude", "Which LLM to use (claude|chatgpt|gemini)")
 	log_fn := flag.String("log", HOME+"/.config/ask-ai/ask-ai.chat.log", "Chat log file")
 	context := flag.Int("context", 0, "Use n previous messages for context")
 	max_tokens := flag.Int("max-tokens", 4096, "Maximum tokens to generate")
