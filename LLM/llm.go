@@ -35,7 +35,16 @@ func (ostr *Output_Stream) Write(p []byte) (n int, err error) {
 }
 
 func (ostr *Output_Stream) Printf(format string, a ...interface{}) (n int, err error) {
-	return fmt.Fprintf(ostr, format, a...)
+	fmtstr := fmt.Sprintf(format, a...)
+
+	for _, writer := range ostr.writers {
+		n, err = writer.Write([]byte(fmtstr))
+		if err != nil {
+			return n, err
+		}
+	}
+
+	return len(fmtstr), nil
 }
 
 func (ostr *Output_Stream) Nl() (n int, err error) {
