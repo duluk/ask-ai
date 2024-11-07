@@ -1,27 +1,5 @@
 package main
 
-// TODO:
-// - Read the chat log for context possibilities
-//   - A flag exists for this, but it's not implemented yet
-// - Create an output class/struct or something that can receive different
-//   'stream' objects so that one output function can be called, then it will
-//   send the output to all attached streams. (eg, stdout, log file, etc)
-//     **DONE**
-// - Consider something similar to the above for the backend model itself. This
-//   would allow the --compare flag mentioned below to be implemented.
-// - Add configuration file for -
-//   * providing the option for storing chat results in a DB
-//   * storing model and system prompt information
-// - How would this app be tested?
-// - Add --compare flag to use mulitple models and compare the results
-// - Add --system-prompt flag to allow the creation of a system prompt
-// - Add support for --image and --file attachments for multi-modal models
-// - Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
-//   `--model chatgpt`
-//
-// - Version 2.0:
-// - Add a TUI interface (using charm?) so the output looks good
-
 import (
 	"bufio"
 	"flag"

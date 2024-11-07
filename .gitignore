@@ -15,6 +15,7 @@
 !go.mod
 
 !README.md
+!TODO.md
 !LICENSE
 
 !Makefile
