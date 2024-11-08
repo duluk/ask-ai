@@ -42,7 +42,7 @@ func main() {
 
 	flag.Parse()
 
-	log, err := os.OpenFile(*log_fn, os.O_APPEND|os.O_RDWR, 0644)
+	log, err := os.OpenFile(*log_fn, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		fmt.Println("Error opening/creating chat log file: ", err)
 		fmt.Println("CHAT WILL NOT BE SAVED (but we're forging on)")
