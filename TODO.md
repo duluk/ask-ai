@@ -1,8 +1,5 @@
 # TODO
 
-1. Read the chat log for context possibilities
-   * A flag exists for this, but it's not implemented
-
 1. Add configuration file for:
    * providing the option for storing chat results in a DB (1.5)
    * storing model and system prompt information
@@ -14,7 +11,7 @@
    itself. This would allow the --compare flag mentioned below to be
    implemented.
 
-1. Add --system-prompt flag to allow the creation of a system prompt
+1. Add --system-prompt flag to allow the use of a system prompt
 
 1. Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
   `--model chatgpt`
@@ -31,6 +28,8 @@ CREATE TABLE interactions (
   -- Add other fields as needed (e.g., user_id, session_id, etc.)
 );
 ```
+1. Change structure of log file to better support Anthropic Role/Content style
+   of context
 
 ## Version 2.0:
 1. Add a TUI interface (using charm?) so the output looks good
