@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/duluk/ask-ai/LLM"
 )
@@ -56,6 +57,20 @@ func main() {
 		ostr.Add_Stream("log", log)
 	}
 
+	var prompt_context []string
+	if context != nil {
+		data, err := os.ReadFile(*log_fn)
+		if err != nil {
+			fmt.Println("File reading error", err)
+			return
+		}
+
+		rx := regexp.MustCompile(`(?m)^\s*<------>\s*$`)
+		records := rx.Split(string(data), -1)
+
+		prompt_context = records[len(records)-*context-1:]
+	}
+
 	var prompt string
 	if flag.NArg() > 0 {
 		prompt = flag.Arg(0)
@@ -74,7 +89,7 @@ func main() {
 
 	client_args := LLM.Client_Args{
 		Prompt:     prompt,
-		Context:    *context,
+		Context:    prompt_context,
 		Max_Tokens: *max_tokens,
 		Out:        ostr,
 	}

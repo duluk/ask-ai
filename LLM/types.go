@@ -35,7 +35,7 @@ type Google struct {
 
 type Client_Args struct {
 	Prompt     string
-	Context    int
+	Context    []string
 	Max_Tokens int
 	Out        *Output_Stream
 }
