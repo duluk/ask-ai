@@ -19,13 +19,18 @@ func (cs *OpenAI) Chat(args Client_Args) error {
 	client := cs.Client
 	out := args.Out
 
+	// AssistantMessage takes a single string but args.Context is an array
+	msg_context := ""
+	for _, msg := range args.Context {
+		msg_context += msg + "\n"
+	}
+
 	ctx := context.Background()
 	stream := client.Chat.Completions.NewStreaming(
 		ctx,
 		openai.ChatCompletionNewParams{
 			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-				// To use context from previous responses, use AssistantMessage:
-				// openai.AssistantMessage(msg_context),
+				openai.AssistantMessage(msg_context),
 				openai.UserMessage(args.Prompt),
 			}),
 			Seed:      openai.Int(1),
