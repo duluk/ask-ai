@@ -17,13 +17,11 @@ func New_Anthropic(max_tokens int) *Anthropic {
 	return &Anthropic{API_Key: api_key, Tokens: max_tokens, Client: client}
 }
 
-func (cs *Anthropic) Chat(args Client_Args) error {
+func (cs *Anthropic) Chat(args Client_Args) (string, error) {
 	prompt := args.Prompt
-	out := args.Out
 	client := cs.Client
 
-	out.Printf("Assistant: ")
-	_, err := client.CreateMessagesStream(
+	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
 			MessagesRequest: anthropic.MessagesRequest{
@@ -35,8 +33,9 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 				},
 				MaxTokens: args.Max_Tokens,
 			},
+			// Print the response as it comes in, as a streaming chat...
 			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
-				out.Printf(*data.Delta.Text)
+				fmt.Printf(*data.Delta.Text)
 			},
 		})
 	if err != nil {
@@ -46,9 +45,8 @@ func (cs *Anthropic) Chat(args Client_Args) error {
 		} else {
 			fmt.Printf("Messages stream error: %v\n", err)
 		}
-		return err
+		return "", err
 	}
-	out.Nl()
 
-	return nil
+	return resp.Content[0].GetText(), nil
 }

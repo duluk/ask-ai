@@ -10,8 +10,13 @@ import (
 
 // These fields need to have capital lettesr to be exported (ugh)
 
+type LLM_Conversations struct {
+	Role    string `yaml:"role"`
+	Content string `yaml:"content"`
+}
+
 type Client interface {
-	Chat(args Client_Args) error
+	Chat(args Client_Args) (string, error)
 }
 
 type Anthropic struct {
@@ -37,5 +42,5 @@ type Client_Args struct {
 	Prompt     string
 	Context    []string
 	Max_Tokens int
-	Out        *Output_Stream
+	Log        *string
 }

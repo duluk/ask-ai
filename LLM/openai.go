@@ -15,9 +15,8 @@ func New_OpenAI(max_tokens int) *OpenAI {
 	return &OpenAI{API_Key: api_key, Tokens: max_tokens, Client: client}
 }
 
-func (cs *OpenAI) Chat(args Client_Args) error {
+func (cs *OpenAI) Chat(args Client_Args) (string, error) {
 	client := cs.Client
-	out := args.Out
 
 	// AssistantMessage takes a single string but args.Context is an array
 	msg_context := ""
@@ -46,19 +45,20 @@ func (cs *OpenAI) Chat(args Client_Args) error {
 	// across the entire screen.
 	// TODO: make the `log` an aggregate of streams, as in the TODO for the
 	// main app; so that it's not just going to stdout by default
-	out.Printf("Assistant: ")
+	var resp string
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {
 			data := evt.Choices[0].Delta.Content
-			out.Printf(data)
+			resp += data
+			fmt.Printf(data)
 		}
 	}
 
 	if stream.Err() != nil {
 		fmt.Printf("Error: %s\n", stream.Err())
-		return stream.Err()
+		return "", stream.Err()
 	}
 
-	return nil
+	return resp, nil
 }

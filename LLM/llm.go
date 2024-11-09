@@ -3,52 +3,42 @@ package LLM
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
-type Output_Stream struct {
-	writers map[string]io.Writer
-}
+func Log_Chat(log_file *string, role string, content string) error {
+	// TODO: is it necessary to load the file every time? I suppose it's not
+	// the worst since this is a run-once program.
+	chat, _ := Load_Chat_Log(log_file)
 
-func New_Output_Stream() *Output_Stream {
-	return &Output_Stream{writers: make(map[string]io.Writer)}
-}
+	chat = append(chat, LLM_Conversations{Role: role, Content: content})
 
-func (ostr *Output_Stream) Add_Stream(name string, writer io.Writer) {
-	ostr.writers[name] = writer
-}
-
-func (ostr *Output_Stream) Remove_Stream(name string) {
-	delete(ostr.writers, name)
-}
-
-func (ostr *Output_Stream) Write(p []byte) (n int, err error) {
-	for _, writer := range ostr.writers {
-		n, err = writer.Write(p)
-		if err != nil {
-			return n, err
-		}
-	}
-	return n, nil
-}
-
-func (ostr *Output_Stream) Printf(format string, a ...interface{}) (n int, err error) {
-	fmtstr := fmt.Sprintf(format, a...)
-
-	for _, writer := range ostr.writers {
-		n, err = writer.Write([]byte(fmtstr))
-		if err != nil {
-			return n, err
-		}
+	data, err := yaml.Marshal(chat)
+	if err != nil {
+		return err
 	}
 
-	return len(fmtstr), nil
+	return os.WriteFile(*log_file, data, 0644)
 }
 
-func (ostr *Output_Stream) Nl() (n int, err error) {
-	return fmt.Fprintln(ostr)
+func Load_Chat_Log(log_file *string) ([]LLM_Conversations, error) {
+	// Read the YAML data from the file
+	data, err := os.ReadFile(*log_file)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the YAML data into a slice of ConversationTurn
+	var conversations []LLM_Conversations
+	err = yaml.Unmarshal(data, &conversations)
+	if err != nil {
+		return nil, err
+	}
+
+	return conversations, nil
 }
 
 func get_client_key(llm string) string {
