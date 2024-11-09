@@ -7,6 +7,7 @@ require (
 	github.com/liushuangls/go-anthropic/v2 v2.10.0
 	github.com/openai/openai-go v0.1.0-alpha.30
 	google.golang.org/api v0.204.0
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (

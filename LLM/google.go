@@ -2,6 +2,7 @@ package LLM
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
@@ -22,7 +23,6 @@ func New_Google(max_tokens int) *Google {
 func (cs *Google) Simple_Chat(args Client_Args) error {
 	client := cs.Client
 	ctx := cs.Context
-	out := args.Out
 
 	model := client.GenerativeModel("gemini-1.5-pro")
 	model.SetMaxOutputTokens(int32(args.Max_Tokens))
@@ -31,8 +31,8 @@ func (cs *Google) Simple_Chat(args Client_Args) error {
 		return err
 	}
 
-	out.Printf("%s", resp.Candidates[0].Content.Parts[0])
-	out.Printf("\n<------>\n")
+	fmt.Printf("%s", resp.Candidates[0].Content.Parts[0])
+	fmt.Printf("\n<------>\n")
 
 	return nil
 }
@@ -42,16 +42,15 @@ func (cs *Google) Simple_Chat(args Client_Args) error {
 // model.SetTopK(40)
 // model.SystemInstruction = genai.NewUserContent(genai.Text("You are Yoda from Star Wars."))
 // model.ResponseMIMEType = "application/json"
-func (cs *Google) Chat(args Client_Args) error {
+func (cs *Google) Chat(args Client_Args) (string, error) {
 	client := cs.Client
 	ctx := cs.Context
-	out := args.Out
 
 	model := client.GenerativeModel("gemini-1.5-pro")
 	model.SetTemperature(0.3)
 	model.SetMaxOutputTokens(int32(args.Max_Tokens))
 
-	out.Printf("Assistant: ")
+	var resp_str string
 	iter := model.GenerateContentStream(ctx, genai.Text(args.Prompt))
 	for {
 		resp, err := iter.Next()
@@ -59,10 +58,12 @@ func (cs *Google) Chat(args Client_Args) error {
 			break
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
-		out.Printf("%s", resp.Candidates[0].Content.Parts[0])
+
+		resp_str += fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
+		fmt.Printf("%s", resp.Candidates[0].Content.Parts[0])
 	}
 
-	return nil
+	return resp_str, nil
 }
