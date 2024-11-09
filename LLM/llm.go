@@ -5,16 +5,20 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
-func Log_Chat(log_file *string, role string, content string) error {
+func Log_Chat(log_file *string, role string, content string, model string) error {
 	// TODO: is it necessary to load the file every time? I suppose it's not
-	// the worst since this is a run-once program.
+	// the worst since this is a run-once program. But if the log is very
+	// large, it seems inefficient to read it all in, append to it, then
+	// re-write it.
 	chat, _ := Load_Chat_Log(log_file)
+	timestamp := time.Now().Format(time.RFC3339)
 
-	chat = append(chat, LLM_Conversations{Role: role, Content: content})
+	chat = append(chat, LLM_Conversations{Role: role, Content: content, Model: model, Timestamp: timestamp})
 
 	data, err := yaml.Marshal(chat)
 	if err != nil {
@@ -25,20 +29,32 @@ func Log_Chat(log_file *string, role string, content string) error {
 }
 
 func Load_Chat_Log(log_file *string) ([]LLM_Conversations, error) {
-	// Read the YAML data from the file
-	data, err := os.ReadFile(*log_file)
+	chat, err := os.ReadFile(*log_file)
 	if err != nil {
 		return nil, err
 	}
 
-	// Unmarshal the YAML data into a slice of ConversationTurn
 	var conversations []LLM_Conversations
-	err = yaml.Unmarshal(data, &conversations)
+	err = yaml.Unmarshal(chat, &conversations)
 	if err != nil {
 		return nil, err
 	}
 
 	return conversations, nil
+}
+
+func Last_n_Chats(log_file *string, n int) ([]LLM_Conversations, error) {
+	chat_ctx, err := Load_Chat_Log(log_file)
+	if err != nil {
+		return nil, err
+	}
+
+	total_turns := len(chat_ctx)
+	if n <= 0 || n >= total_turns {
+		return nil, fmt.Errorf("Context value is invalid (either <= 0 or too large): %d", n)
+	}
+
+	return chat_ctx[total_turns-n:], nil
 }
 
 func get_client_key(llm string) string {

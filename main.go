@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/duluk/ask-ai/LLM"
 )
@@ -16,9 +15,6 @@ func chat_with_llm(model string, args LLM.Client_Args) {
 	var client LLM.Client
 	log := args.Log
 
-	fmt.Printf("User: " + args.Prompt + "\n\n")
-	fmt.Printf("Assistant: ")
-
 	switch model {
 	case "chatgpt":
 		client = LLM.New_OpenAI(args.Max_Tokens)
@@ -28,16 +24,18 @@ func chat_with_llm(model string, args LLM.Client_Args) {
 		client = LLM.New_Google(args.Max_Tokens)
 	default:
 		fmt.Println("Unknown model: ", model)
+		os.Exit(1)
 	}
+	LLM.Log_Chat(log, "User", args.Prompt, "")
 
+	fmt.Printf("Assistant: ")
 	resp, err := client.Chat(args)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
 	}
 
-	LLM.Log_Chat(log, "user", args.Prompt)
-	LLM.Log_Chat(log, "assistant ("+model+")", resp)
+	LLM.Log_Chat(log, "Assistant", resp, model)
 }
 
 func main() {
@@ -67,18 +65,9 @@ func main() {
 	// }
 	// defer log.Close()
 
-	var prompt_context []string
+	var prompt_context []LLM.LLM_Conversations
 	if context != nil {
-		data, err := os.ReadFile(*log_fn)
-		if err != nil {
-			fmt.Println("File reading error", err)
-			return
-		}
-
-		rx := regexp.MustCompile(`(?m)^\s*<------>\s*$`)
-		records := rx.Split(string(data), -1)
-
-		prompt_context = records[len(records)-*context-1:]
+		prompt_context, _ = LLM.Last_n_Chats(log_fn, *context)
 	}
 
 	var prompt string

@@ -18,10 +18,14 @@ func New_OpenAI(max_tokens int) *OpenAI {
 func (cs *OpenAI) Chat(args Client_Args) (string, error) {
 	client := cs.Client
 
-	// AssistantMessage takes a single string but args.Context is an array
-	msg_context := ""
+	var msg_context string
 	for _, msg := range args.Context {
-		msg_context += msg + "\n"
+		switch msg.Role {
+		case "User":
+			msg_context += "User: " + msg.Content + "\n"
+		case "Assistant":
+			msg_context += "Assistant: " + msg.Content + "\n"
+		}
 	}
 
 	ctx := context.Background()
