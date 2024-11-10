@@ -16,6 +16,12 @@
 1. Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
   `--model chatgpt`
 
+1. Add a --continue flag to allow the user to continue a conversation with the
+   same context (and model?). The issue is how to 'mark' a conversational 'turn'
+   as the same conversation. Or how to mark the end of a conversation. Maybe
+   something like, if the current prompt does not use `--continue`, then it's a
+   new conversation and the previous one is over.
+
 ## Version 1.5
 1. Add support for a DB backend for storing chat logs
 ```sql
@@ -25,12 +31,8 @@ CREATE TABLE interactions (
   prompt TEXT NOT NULL,
   response TEXT NOT NULL,
   model_name TEXT, -- Store which LLM was used (e.g., 'Gemini 1.5 Pro')
-  -- Add other fields as needed (e.g., user_id, session_id, etc.)
 );
 ```
-1. Change structure of log file to better support Anthropic Role/Content style
-   of context
-
 ## Version 2.0:
 1. Add a TUI interface (using charm?) so the output looks good
 1. Add support for --image and --file attachments for multi-modal models
