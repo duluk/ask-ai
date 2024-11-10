@@ -44,17 +44,17 @@ func Load_Chat_Log(log_file *string) ([]LLM_Conversations, error) {
 }
 
 func Last_n_Chats(log_file *string, n int) ([]LLM_Conversations, error) {
-	chat_ctx, err := Load_Chat_Log(log_file)
+	chat, err := Load_Chat_Log(log_file)
 	if err != nil {
 		return nil, err
 	}
 
-	total_turns := len(chat_ctx)
+	total_turns := len(chat)
 	if n <= 0 || n >= total_turns {
 		return nil, fmt.Errorf("Context value is invalid (either <= 0 or too large): %d", n)
 	}
 
-	return chat_ctx[total_turns-n:], nil
+	return chat[total_turns-n:], nil
 }
 
 func get_client_key(llm string) string {
