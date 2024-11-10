@@ -3,11 +3,21 @@ package LLM
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
+
+func build_prompt(msg_context []LLM_Conversations, new_prompt string) string {
+	var prompt strings.Builder
+	for _, msg := range msg_context {
+		prompt.WriteString(fmt.Sprintf("%s: %s\n", msg.Role, msg.Content))
+	}
+	prompt.WriteString(fmt.Sprintf("user: %s", new_prompt))
+	return prompt.String()
+}
 
 func New_Google(max_tokens int) *Google {
 	api_key := get_client_key("google")
@@ -51,7 +61,8 @@ func (cs *Google) Chat(args Client_Args) (string, error) {
 	model.SetMaxOutputTokens(int32(args.Max_Tokens))
 
 	var resp_str string
-	iter := model.GenerateContentStream(ctx, genai.Text(args.Prompt))
+	prompt := build_prompt(args.Context, args.Prompt)
+	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
 	for {
 		resp, err := iter.Next()
 		if err == iterator.Done {
