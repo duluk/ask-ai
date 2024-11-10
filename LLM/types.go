@@ -11,8 +11,10 @@ import (
 // These fields need to have capital lettesr to be exported (ugh)
 
 type LLM_Conversations struct {
-	Role    string `yaml:"role"`
-	Content string `yaml:"content"`
+	Role      string `yaml:"role"`
+	Content   string `yaml:"content"`
+	Model     string `yaml:"model"`
+	Timestamp string `yaml:"timestamp"`
 }
 
 type Client interface {
@@ -40,7 +42,7 @@ type Google struct {
 
 type Client_Args struct {
 	Prompt     string
-	Context    []string
+	Context    []LLM_Conversations
 	Max_Tokens int
 	Log        *string
 }
