@@ -33,6 +33,9 @@ CREATE TABLE interactions (
   model_name TEXT, -- Store which LLM was used (e.g., 'Gemini 1.5 Pro')
 );
 ```
+1. Use a package like `go-tf-idf` or `rake-go` for doing keyword analysis on
+   the conversation to add to the database entry so they can be searched later.
+
 ## Version 2.0:
 1. Add a TUI interface (using charm?) so the output looks good
 1. Add support for --image and --file attachments for multi-modal models
