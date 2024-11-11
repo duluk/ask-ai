@@ -41,8 +41,9 @@ type Google struct {
 }
 
 type Client_Args struct {
-	Prompt     string
-	Context    []LLM_Conversations
-	Max_Tokens int
-	Log        *string
+	Prompt      *string
+	Context     []LLM_Conversations
+	Max_Tokens  *int
+	Temperature *float64
+	Log         *string
 }

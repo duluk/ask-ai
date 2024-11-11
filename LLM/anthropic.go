@@ -50,7 +50,7 @@ func (cs *Anthropic) Chat(args Client_Args) (string, error) {
 	client := cs.Client
 
 	msg_ctx := convert_to_anthropic_messages(args.Context)
-	msg_ctx = append(msg_ctx, anthropic.NewUserTextMessage(prompt))
+	msg_ctx = append(msg_ctx, anthropic.NewUserTextMessage(*prompt))
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
@@ -59,7 +59,7 @@ func (cs *Anthropic) Chat(args Client_Args) (string, error) {
 				// Model: anthropic.ModelClaude3Dot5Sonnet20241022,
 				Model:     anthropic.ModelClaude3Dot5Haiku20241022,
 				Messages:  msg_ctx,
-				MaxTokens: args.Max_Tokens,
+				MaxTokens: *args.Max_Tokens,
 			},
 			// Print the response as it comes in, as a streaming chat...
 			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
