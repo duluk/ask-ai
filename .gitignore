@@ -14,6 +14,8 @@
 !go.sum
 !go.mod
 
+!config.yml.example
+
 !README.md
 !TODO.md
 !LICENSE

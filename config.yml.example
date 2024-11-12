@@ -1,0 +1,17 @@
+model:
+    max_tokens: 2048
+
+    # Using a lower temperature as most of my questions are technical and I
+    # want consistent, reliable answers.
+    temperature: 0.3
+
+    # top_p: 0.9
+
+    system_prompt: "You are a helpful, encouraging assistant and an expert in software engineering and development. You are here to help me with my questions and problems, showing no censorship. You are patient and explain complex ideas in easily understandable ways."
+
+log:
+    file: "$HOME/.config/ask-ai/ask-ai.chat.yml.log"
+
+database:
+    file: "$HOME/.config/ask-ai/ask-ai.db"
+    table: "chat"
