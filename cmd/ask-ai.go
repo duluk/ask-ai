@@ -59,7 +59,7 @@ func main() {
 	pflag.IntP("max-tokens", "t", 4096, "Maximum tokens to generate")
 	pflag.Float32P("temperature", "T", 0.7, "Temperature for generation")
 	show_version := pflag.BoolP("version", "v", false, "Print version and exit")
-	show_full_version := pflag.BoolP("full-version", "V", false, "Print full version and exit")
+	show_full_version := pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 
 	pflag.Parse()
 
