@@ -41,35 +41,60 @@ func chat_with_llm(model string, args LLM.Client_Args) {
 }
 
 func main() {
+	var err error
 	HOME := os.Getenv("HOME")
 
 	model := pflag.StringP("model", "m", "claude", "Which LLM to use (claude|chatgpt|gemini)")
 	context := pflag.IntP("context", "n", 0, "Use previous n messages for context")
+	cfg_file := pflag.StringP("config", "c", "", "Configuration file")
 	pflag.StringP("log", "l", HOME+"/.config/ask-ai/ask-ai.chat.yml", "Chat log file")
+	pflag.StringP("system-prompt", "s", "", "System prompt for LLM")
 	pflag.IntP("max-tokens", "t", 4096, "Maximum tokens to generate")
-	pflag.StringP("config", "c", HOME+"/.config/ask-ai/config", "Configuration file")
-	pflag.Float64P("temperature", "T", 0.7, "Temperature for generation")
+	pflag.Float32P("temperature", "T", 0.7, "Temperature for generation")
 
 	pflag.Parse()
 
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath(HOME + "/.config/ask-ai")
-	viper.ReadInConfig()
+	if *cfg_file != "" {
+		// Validation will happen below with ReadInConfig()
+		viper.SetConfigFile(*cfg_file)
+	} else {
+		viper.SetConfigName("config.yml")
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(HOME + "/.config/ask-ai")
+		viper.AddConfigPath(".")
+	}
+
+	if err = viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Printf("No configuration file found: %s\n", *cfg_file)
+		} else {
+			panic(fmt.Errorf("fatal error config file: %w", err))
+		}
+	}
+
+	if viper.ConfigFileUsed() != "" {
+		fmt.Println("Using configuration file: ", viper.ConfigFileUsed())
+	}
 
 	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
 	viper.BindPFlag("log.file", pflag.Lookup("log"))
 	viper.BindPFlag("model.temperature", pflag.Lookup("temperature"))
+	viper.BindPFlag("model.system_prompt", pflag.Lookup("system-prompt"))
 
 	// Get configuration values (potentially overridden by flags)
-	log_fn := viper.GetString("log.file")
+	log_fn := os.ExpandEnv(viper.GetString("log.file"))
+	system_prompt := viper.GetString("model.system_prompt")
 	max_tokens := viper.GetInt("model.max_tokens")
-	temperature := viper.GetFloat64("model.temperature")
+	temperature := float32(viper.GetFloat64("model.temperature"))
+	// fmt.Println("Using log file: ", log_fn)
+	// fmt.Println("Using max tokens: ", max_tokens)
+	// fmt.Println("Using temperature: ", temperature)
+	// fmt.Println("Using system prompt: ", system_prompt)
 
 	if _, err := os.Stat(log_fn); err != nil {
 		if os.IsNotExist(err) {
 			if err := os.WriteFile(log_fn, []byte(""), 0644); err != nil {
-				fmt.Println("Error opening/creating chat log file: ", err)
+				fmt.Println("error opening/creating chat log file: ", err)
 			}
 		} else {
 			fmt.Println("error checking file existence: %w", err)
@@ -82,7 +107,6 @@ func main() {
 	}
 
 	var prompt string
-	var err error
 	if pflag.NArg() > 0 {
 		prompt = pflag.Arg(0)
 	} else {
@@ -98,11 +122,12 @@ func main() {
 	}
 
 	client_args := LLM.Client_Args{
-		Prompt:      &prompt,
-		Context:     prompt_context,
-		Max_Tokens:  &max_tokens,
-		Temperature: &temperature,
-		Log:         &log_fn,
+		Prompt:        &prompt,
+		System_Prompt: &system_prompt,
+		Context:       prompt_context,
+		Max_Tokens:    &max_tokens,
+		Temperature:   &temperature,
+		Log:           &log_fn,
 	}
 
 	chat_with_llm(*model, client_args)
