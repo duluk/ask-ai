@@ -34,12 +34,17 @@ func (cs *OpenAI) Chat(args Client_Args) (string, error) {
 		openai.ChatCompletionNewParams{
 			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 				openai.AssistantMessage(msg_context),
-				openai.UserMessage(args.Prompt),
+				openai.UserMessage(*args.Prompt),
 			}),
-			Seed:      openai.Int(1),
-			Model:     openai.F(openai.ChatModelGPT4o),
-			MaxTokens: openai.Int(int64(args.Max_Tokens)),
-		})
+			// Seed:        openai.Int(1), // Same seed/parameters will attempt to return the same results
+			Model:       openai.F(openai.ChatModelGPT4o),
+			MaxTokens:   openai.Int(int64(*args.Max_Tokens)),
+			Temperature: openai.Float(float64(*args.Temperature)), // Controls randomness (0.0 to 2.0)
+			// TopP:             openai.Float(1.0),                        // Controls diversity via nucleus sampling; alter this or Temperature but not both
+			// N:                openai.Int(1),                            // Number of completions to generate
+			// ResponseFormat:   openai.ChatResponseFormatDefault,         // Format of the response
+		},
+	)
 
 	// Apparently what happens with stream is that the server chunks the
 	// response according to its own internal desires and whims, presenting the

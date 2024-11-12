@@ -35,8 +35,8 @@ func (cs *Google) Simple_Chat(args Client_Args) error {
 	ctx := cs.Context
 
 	model := client.GenerativeModel("gemini-1.5-pro")
-	model.SetMaxOutputTokens(int32(args.Max_Tokens))
-	resp, err := model.GenerateContent(ctx, genai.Text(args.Prompt))
+	model.SetMaxOutputTokens(int32(*args.Max_Tokens))
+	resp, err := model.GenerateContent(ctx, genai.Text(*args.Prompt))
 	if err != nil {
 		return err
 	}
@@ -47,21 +47,20 @@ func (cs *Google) Simple_Chat(args Client_Args) error {
 	return nil
 }
 
-// Some configuration options for the model:
-// model.SetTopP(0.9)
-// model.SetTopK(40)
-// model.SystemInstruction = genai.NewUserContent(genai.Text("You are Yoda from Star Wars."))
-// model.ResponseMIMEType = "application/json"
 func (cs *Google) Chat(args Client_Args) (string, error) {
 	client := cs.Client
 	ctx := cs.Context
 
 	model := client.GenerativeModel("gemini-1.5-pro")
-	model.SetTemperature(0.3)
-	model.SetMaxOutputTokens(int32(args.Max_Tokens))
+	model.SetTemperature(*args.Temperature)
+	model.SetMaxOutputTokens(int32(*args.Max_Tokens))
+	model.SystemInstruction = genai.NewUserContent(genai.Text(*args.System_Prompt))
+	// model.SetTopP(0.9)
+	// model.SetTopK(40)
+	// model.ResponseMIMEType = "application/json"
 
 	var resp_str string
-	prompt := build_prompt(args.Context, args.Prompt)
+	prompt := build_prompt(args.Context, *args.Prompt)
 	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
 	for {
 		resp, err := iter.Next()

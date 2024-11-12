@@ -50,16 +50,20 @@ func (cs *Anthropic) Chat(args Client_Args) (string, error) {
 	client := cs.Client
 
 	msg_ctx := convert_to_anthropic_messages(args.Context)
-	msg_ctx = append(msg_ctx, anthropic.NewUserTextMessage(prompt))
+	msg_ctx = append(msg_ctx, anthropic.NewUserTextMessage(*prompt))
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
 			MessagesRequest: anthropic.MessagesRequest{
 				// TODO: figure out how to specify different anthropic models
 				// Model: anthropic.ModelClaude3Dot5Sonnet20241022,
-				Model:     anthropic.ModelClaude3Dot5Haiku20241022,
-				Messages:  msg_ctx,
-				MaxTokens: args.Max_Tokens,
+				Model:       anthropic.ModelClaude3Dot5Haiku20241022,
+				Messages:    msg_ctx,
+				MaxTokens:   *args.Max_Tokens,
+				Temperature: args.Temperature,
+				System:      *args.System_Prompt,
+				// TopP:        1.0,
+				// TopK:        40,
 			},
 			// Print the response as it comes in, as a streaming chat...
 			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
