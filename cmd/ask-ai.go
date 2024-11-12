@@ -11,6 +11,13 @@ import (
 	"github.com/duluk/ask-ai/LLM"
 )
 
+const version = "0.3.0"
+
+var (
+	commit string = "Unknown"
+	date   string = "Unknown"
+)
+
 // I'm probably writing "Ruby Go"...
 
 func chat_with_llm(model string, args LLM.Client_Args) {
@@ -51,8 +58,22 @@ func main() {
 	pflag.StringP("system-prompt", "s", "", "System prompt for LLM")
 	pflag.IntP("max-tokens", "t", 4096, "Maximum tokens to generate")
 	pflag.Float32P("temperature", "T", 0.7, "Temperature for generation")
+	show_version := pflag.BoolP("version", "v", false, "Print version and exit")
+	show_full_version := pflag.BoolP("full-version", "V", false, "Print full version and exit")
 
 	pflag.Parse()
+
+	if *show_version {
+		fmt.Println("ask-ai version: ", version)
+		os.Exit(0)
+	}
+
+	if *show_full_version {
+		fmt.Println("Version: ", version)
+		fmt.Println("Commit:  ", commit)
+		fmt.Println("Date:    ", date)
+		os.Exit(0)
+	}
 
 	if *cfg_file != "" {
 		// Validation will happen below with ReadInConfig()
