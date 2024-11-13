@@ -11,10 +11,11 @@ import (
 // These fields need to have capital lettesr to be exported (ugh)
 
 type LLM_Conversations struct {
-	Role      string `yaml:"role"`
-	Content   string `yaml:"content"`
-	Model     string `yaml:"model"`
-	Timestamp string `yaml:"timestamp"`
+	Role             string `yaml:"role"`
+	Content          string `yaml:"content"`
+	Model            string `yaml:"model"`
+	Timestamp        string `yaml:"timestamp"`
+	New_Conversation bool   `yaml:"new_conversation"`
 }
 
 type Client interface {

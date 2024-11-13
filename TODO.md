@@ -1,17 +1,11 @@
 # TODO
 
-1. Add configuration file for:
-   * providing the option for storing chat results in a DB (1.5)
-   * storing model and system prompt information
-
 1. How would this app be tested?
 
 1. Add --compare flag to use mulitple models and compare the results......
    * Consider something similar to the Output_Stream for the backend model
    itself. This would allow the --compare flag mentioned below to be
    implemented.
-
-1. Add --system-prompt flag to allow the use of a system prompt
 
 1. Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
   `--model chatgpt`
