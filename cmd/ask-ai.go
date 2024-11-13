@@ -20,7 +20,7 @@ var (
 
 // I'm probably writing "Ruby Go"...
 
-func chat_with_llm(model string, args LLM.Client_Args) {
+func chat_with_llm(model string, args LLM.Client_Args, continue_chat bool) {
 	var client LLM.Client
 	log := args.Log
 
@@ -35,7 +35,7 @@ func chat_with_llm(model string, args LLM.Client_Args) {
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
 	}
-	LLM.Log_Chat(log, "User", *args.Prompt, "")
+	LLM.Log_Chat(log, "User", *args.Prompt, "", continue_chat)
 
 	fmt.Printf("Assistant: ")
 	resp, err := client.Chat(args)
@@ -44,7 +44,7 @@ func chat_with_llm(model string, args LLM.Client_Args) {
 		os.Exit(1)
 	}
 
-	LLM.Log_Chat(log, "Assistant", resp, model)
+	LLM.Log_Chat(log, "Assistant", resp, model, continue_chat)
 }
 
 func main() {
@@ -53,13 +53,15 @@ func main() {
 
 	model := pflag.StringP("model", "m", "claude", "Which LLM to use (claude|chatgpt|gemini)")
 	context := pflag.IntP("context", "n", 0, "Use previous n messages for context")
-	cfg_file := pflag.StringP("config", "c", "", "Configuration file")
+	cfg_file := pflag.StringP("config", "C", "", "Configuration file")
+	continue_chat := pflag.BoolP("continue", "c", false, "Continue previous conversation")
+	show_version := pflag.BoolP("version", "v", false, "Print version and exit")
+	show_full_version := pflag.BoolP("full-version", "V", false, "Print full version information and exit")
+
 	pflag.StringP("log", "l", HOME+"/.config/ask-ai/ask-ai.chat.yml", "Chat log file")
 	pflag.StringP("system-prompt", "s", "", "System prompt for LLM")
 	pflag.IntP("max-tokens", "t", 4096, "Maximum tokens to generate")
 	pflag.Float32P("temperature", "T", 0.7, "Temperature for generation")
-	show_version := pflag.BoolP("version", "v", false, "Print version and exit")
-	show_full_version := pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 
 	pflag.Parse()
 
@@ -93,9 +95,9 @@ func main() {
 		}
 	}
 
-	if viper.ConfigFileUsed() != "" {
-		fmt.Println("Using configuration file: ", viper.ConfigFileUsed())
-	}
+	// if viper.ConfigFileUsed() != "" {
+	// 	fmt.Println("Using configuration file: ", viper.ConfigFileUsed())
+	// }
 
 	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
 	viper.BindPFlag("log.file", pflag.Lookup("log"))
@@ -107,10 +109,6 @@ func main() {
 	system_prompt := viper.GetString("model.system_prompt")
 	max_tokens := viper.GetInt("model.max_tokens")
 	temperature := float32(viper.GetFloat64("model.temperature"))
-	// fmt.Println("Using log file: ", log_fn)
-	// fmt.Println("Using max tokens: ", max_tokens)
-	// fmt.Println("Using temperature: ", temperature)
-	// fmt.Println("Using system prompt: ", system_prompt)
 
 	if _, err := os.Stat(log_fn); err != nil {
 		if os.IsNotExist(err) {
@@ -123,7 +121,10 @@ func main() {
 	}
 
 	var prompt_context []LLM.LLM_Conversations
-	if context != nil {
+	if *continue_chat {
+		prompt_context, _ = LLM.Continue_Conversation(&log_fn)
+	}
+	if *context != 0 {
 		prompt_context, _ = LLM.Last_n_Chats(&log_fn, *context)
 	}
 
@@ -151,5 +152,5 @@ func main() {
 		Log:           &log_fn,
 	}
 
-	chat_with_llm(*model, client_args)
+	chat_with_llm(*model, client_args, *continue_chat)
 }
