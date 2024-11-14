@@ -88,9 +88,7 @@ func main() {
 	}
 
 	if err = viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Printf("No configuration file found: %s\n", *cfg_file)
-		} else {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
 	}
