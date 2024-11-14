@@ -24,6 +24,7 @@ func main() {
 	var err error
 	HOME := os.Getenv("HOME")
 
+	/* HANDLE OPTIONS */
 	// TODO: I think it's time to take all this out and create an app_args
 	// object or structure. Maybe. Maybe it's fine...
 	model := pflag.StringP("model", "m", "claude", "Which LLM to use (claude|chatgpt|gemini)")
@@ -92,6 +93,7 @@ func main() {
 	}
 	defer log_fd.Close()
 
+	/* CONTEXT? LOAD IT */
 	var prompt_context []LLM.LLM_Conversations
 	if *continue_chat {
 		prompt_context, err = LLM.Continue_Conversation(log_fd)
@@ -106,6 +108,7 @@ func main() {
 		}
 	}
 
+	/* GET THE PROMPT */
 	var prompt string
 	if pflag.NArg() > 0 {
 		prompt = pflag.Arg(0)
