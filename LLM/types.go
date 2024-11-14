@@ -2,6 +2,7 @@ package LLM
 
 import (
 	"context"
+	"os"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/liushuangls/go-anthropic/v2"
@@ -47,5 +48,5 @@ type Client_Args struct {
 	Context       []LLM_Conversations
 	Max_Tokens    *int
 	Temperature   *float32
-	Log           *string
+	Log           *os.File
 }

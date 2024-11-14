@@ -20,37 +20,12 @@ var (
 
 // I'm probably writing "Ruby Go"...
 
-func chat_with_llm(model string, args LLM.Client_Args, continue_chat bool) {
-	var client LLM.Client
-	log := args.Log
-
-	switch model {
-	case "chatgpt":
-		client = LLM.New_OpenAI(*args.Max_Tokens)
-	case "claude":
-		client = LLM.New_Anthropic(*args.Max_Tokens)
-	case "gemini":
-		client = LLM.New_Google(*args.Max_Tokens)
-	default:
-		fmt.Println("Unknown model: ", model)
-		os.Exit(1)
-	}
-	LLM.Log_Chat(log, "User", *args.Prompt, "", continue_chat)
-
-	fmt.Printf("Assistant: ")
-	resp, err := client.Chat(args)
-	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(1)
-	}
-
-	LLM.Log_Chat(log, "Assistant", resp, model, continue_chat)
-}
-
 func main() {
 	var err error
 	HOME := os.Getenv("HOME")
 
+	// TODO: I think it's time to take all this out and create an app_args
+	// object or structure. Maybe. Maybe it's fine...
 	model := pflag.StringP("model", "m", "claude", "Which LLM to use (claude|chatgpt|gemini)")
 	context := pflag.IntP("context", "n", 0, "Use previous n messages for context")
 	cfg_file := pflag.StringP("config", "C", "", "Configuration file")
@@ -88,6 +63,8 @@ func main() {
 	}
 
 	if err = viper.ReadInConfig(); err != nil {
+		// TODO: I don't know if panicking in this situation is correct; could
+		// just continue with defaults
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
@@ -108,28 +85,32 @@ func main() {
 	max_tokens := viper.GetInt("model.max_tokens")
 	temperature := float32(viper.GetFloat64("model.temperature"))
 
-	if _, err := os.Stat(log_fn); err != nil {
-		if os.IsNotExist(err) {
-			if err := os.WriteFile(log_fn, []byte(""), 0644); err != nil {
-				fmt.Println("error opening/creating chat log file: ", err)
-			}
-		} else {
-			fmt.Println("error checking file existence: %w", err)
-		}
+	var log_fd *os.File
+	log_fd, err = os.OpenFile(log_fn, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		fmt.Println("Error with chat log file: ", err)
 	}
+	defer log_fd.Close()
 
 	var prompt_context []LLM.LLM_Conversations
 	if *continue_chat {
-		prompt_context, _ = LLM.Continue_Conversation(&log_fn)
+		prompt_context, err = LLM.Continue_Conversation(log_fd)
+		if err != nil {
+			fmt.Println("Error reading log for continuing chat: ", err)
+		}
 	}
 	if *context != 0 {
-		prompt_context, _ = LLM.Last_n_Chats(&log_fn, *context)
+		prompt_context, err = LLM.Last_n_Chats(log_fd, *context)
+		if err != nil {
+			fmt.Println("Error loading chat context from log: ", err)
+		}
 	}
 
 	var prompt string
 	if pflag.NArg() > 0 {
 		prompt = pflag.Arg(0)
 	} else {
+		// TODO: Make the prompt, `*model+"> "` and remove 'Using model...'
 		fmt.Println("Using model:", *model)
 		fmt.Print("> ")
 		reader := bufio.NewReader(os.Stdin)
@@ -147,8 +128,36 @@ func main() {
 		Context:       prompt_context,
 		Max_Tokens:    &max_tokens,
 		Temperature:   &temperature,
-		Log:           &log_fn,
+		Log:           log_fd,
 	}
 
 	chat_with_llm(*model, client_args, *continue_chat)
+}
+
+func chat_with_llm(model string, args LLM.Client_Args, continue_chat bool) {
+	var client LLM.Client
+	log := args.Log
+
+	switch model {
+	case "chatgpt":
+		client = LLM.New_OpenAI(*args.Max_Tokens)
+	case "claude":
+		client = LLM.New_Anthropic(*args.Max_Tokens)
+	case "gemini":
+		client = LLM.New_Google(*args.Max_Tokens)
+	default:
+		fmt.Println("Unknown model: ", model)
+		os.Exit(1)
+	}
+	LLM.Log_Chat(log, "User", *args.Prompt, "", continue_chat)
+
+	fmt.Printf("Assistant: ")
+	resp, err := client.Chat(args)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+	fmt.Printf("\n\n-%s\n", model)
+
+	LLM.Log_Chat(log, "Assistant", resp, model, continue_chat)
 }
