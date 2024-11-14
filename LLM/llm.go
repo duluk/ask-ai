@@ -3,6 +3,7 @@ package LLM
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -10,36 +11,64 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func Log_Chat(log_file *string, role string, content string, model string, continue_chat bool) error {
+func Log_Chat(log_fd *os.File, role string, content string, model string, continue_chat bool) error {
 	// TODO: is it necessary to load the file every time? I suppose it's not
 	// the worst since this is a run-once program. But if the log is very
 	// large, it seems inefficient to read it all in, append to it, then
 	// re-write it. (only plus is that when changing the YML structure, it
 	// automarically re-writes the entire log and applies the new tags, though
 	// they may be empty)
-	chat, _ := Load_Chat_Log(log_file)
+	chat, err := Load_Chat_Log(log_fd)
+	if err != nil {
+		return err
+	}
+
 	timestamp := time.Now().Format(time.RFC3339)
 
-	chat = append(chat, LLM_Conversations{Role: role, Content: content, Model: model, Timestamp: timestamp, New_Conversation: !continue_chat})
+	chat = append(chat, LLM_Conversations{
+		Role:             role,
+		Content:          content,
+		Model:            model,
+		Timestamp:        timestamp,
+		New_Conversation: !continue_chat,
+	})
 
 	data, err := yaml.Marshal(chat)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(*log_file, data, 0644)
+	// Remove all data and re-write from scratch to avoid corruption or
+	// duplication. Until I decide on a better way to handle this that doens't
+	// involve reading the entire log and re-writing.
+	err = log_fd.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = log_fd.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	_, err = log_fd.Write(data)
+	return err
 }
 
 // TODO: should this be loaded into some memory structure? I think it's
 // probably only called twice in one run, but things could change.
-func Load_Chat_Log(log_file *string) ([]LLM_Conversations, error) {
-	chat, err := os.ReadFile(*log_file)
+func Load_Chat_Log(log_fd *os.File) ([]LLM_Conversations, error) {
+	_, err := log_fd.Seek(0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := io.ReadAll(log_fd)
 	if err != nil {
 		return nil, err
 	}
 
 	var conversations []LLM_Conversations
-	err = yaml.Unmarshal(chat, &conversations)
+	err = yaml.Unmarshal(content, &conversations)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +76,8 @@ func Load_Chat_Log(log_file *string) ([]LLM_Conversations, error) {
 	return conversations, nil
 }
 
-func Last_n_Chats(log_file *string, n int) ([]LLM_Conversations, error) {
-	chat, err := Load_Chat_Log(log_file)
+func Last_n_Chats(log_fd *os.File, n int) ([]LLM_Conversations, error) {
+	chat, err := Load_Chat_Log(log_fd)
 	if err != nil {
 		return nil, err
 	}
@@ -61,10 +90,14 @@ func Last_n_Chats(log_file *string, n int) ([]LLM_Conversations, error) {
 	return chat[total_turns-n:], nil
 }
 
-func Continue_Conversation(log_file *string) ([]LLM_Conversations, error) {
-	chat, err := Load_Chat_Log(log_file)
+func Continue_Conversation(log_fd *os.File) ([]LLM_Conversations, error) {
+	chat, err := Load_Chat_Log(log_fd)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(chat) == 0 {
+		return nil, fmt.Errorf("No chat history to continue")
 	}
 
 	last_conversation := 0
