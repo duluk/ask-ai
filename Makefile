@@ -57,4 +57,8 @@ install: all
 		echo "Installed $$app to $(INSTALL_DIR)"; \
 	done
 
+# Futurte self: This ensures that make treats the targets as labels and not
+# files. This is important because if a file of the same name actually exists,
+# it may not be executed if the timestamp hasn't changed. That's not what we
+# want for these.
 .PHONY: all list clean test fmt vet run install

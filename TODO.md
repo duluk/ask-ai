@@ -2,11 +2,6 @@
 
 1. How would this app be tested?
 
-1. Add --compare flag to use mulitple models and compare the results......
-   * Consider something similar to the Output_Stream for the backend model
-   itself. This would allow the --compare flag mentioned below to be
-   implemented.
-
 1. Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
   `--model chatgpt`
 
@@ -26,4 +21,14 @@ CREATE TABLE interactions (
 
 ## Version 2.0:
 1. Add a TUI interface (using charm?) so the output looks good
+   * Markdown support would be nice
 1. Add support for --image and --file attachments for multi-modal models
+1. Add --compare flag to use mulitple models and compare the results......
+   * Consider something similar to the Output_Stream for the backend model
+   itself. This would allow the --compare flag mentioned below to be
+   implemented.
+   * This is certainly a goroutine concurrent thing
+   * Also moved to v2.0 because I think the TUI could provide some panes to
+   make it look better and show on screen at the same time (for at least 3
+   models; more may be too much)
+
