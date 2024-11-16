@@ -10,10 +10,10 @@ import (
 	"github.com/liushuangls/go-anthropic/v2"
 )
 
-func convert_to_anthropic_messages(chat_hist []LLM_Conversations) []anthropic.Message {
-	anthropicMsgs := make([]anthropic.Message, len(chat_hist))
+func convertToAnthropicMessages(chatHist []LLMConversations) []anthropic.Message {
+	anthropicMsgs := make([]anthropic.Message, len(chatHist))
 
-	for i, msg := range chat_hist {
+	for i, msg := range chatHist {
 		var role anthropic.ChatRole
 
 		switch msg.Role {
@@ -38,19 +38,19 @@ func convert_to_anthropic_messages(chat_hist []LLM_Conversations) []anthropic.Me
 	return anthropicMsgs
 }
 
-func New_Anthropic(max_tokens int) *Anthropic {
-	api_key := get_client_key("anthropic")
+func NewAnthropic(maxTokens int) *Anthropic {
+	api_key := getClientKey("anthropic")
 	client := anthropic.NewClient(api_key)
 
-	return &Anthropic{API_Key: api_key, Tokens: max_tokens, Client: client}
+	return &Anthropic{APIKey: api_key, Tokens: maxTokens, Client: client}
 }
 
-func (cs *Anthropic) Chat(args Client_Args) (string, error) {
+func (cs *Anthropic) Chat(args ClientArgs) (string, error) {
 	prompt := args.Prompt
 	client := cs.Client
 
-	msg_ctx := convert_to_anthropic_messages(args.Context)
-	msg_ctx = append(msg_ctx, anthropic.NewUserTextMessage(*prompt))
+	msgCtx := convertToAnthropicMessages(args.Context)
+	msgCtx = append(msgCtx, anthropic.NewUserTextMessage(*prompt))
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
@@ -58,10 +58,10 @@ func (cs *Anthropic) Chat(args Client_Args) (string, error) {
 				// TODO: figure out how to specify different anthropic models
 				// Model: anthropic.ModelClaude3Dot5Sonnet20241022,
 				Model:       anthropic.ModelClaude3Dot5Haiku20241022,
-				Messages:    msg_ctx,
-				MaxTokens:   *args.Max_Tokens,
+				Messages:    msgCtx,
+				MaxTokens:   *args.MaxTokens,
 				Temperature: args.Temperature,
-				System:      *args.System_Prompt,
+				System:      *args.SystemPrompt,
 				// TopP:        1.0,
 				// TopK:        40,
 			},
