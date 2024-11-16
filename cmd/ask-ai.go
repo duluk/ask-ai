@@ -27,7 +27,7 @@ func main() {
 	/* HANDLE OPTIONS */
 	// TODO: I think it's time to take all this out and create an app_args
 	// object or structure. Maybe. Maybe it's fine...
-	model := pflag.StringP("model", "m", "claude", "Which LLM to use (claude|chatgpt|gemini)")
+	model := pflag.StringP("model", "m", "claude", "Which LLM to use (claude|chatgpt|gemini|grok)")
 	context := pflag.IntP("context", "n", 0, "Use previous n messages for context")
 	cfg_file := pflag.StringP("config", "C", "", "Configuration file")
 	continue_chat := pflag.BoolP("continue", "c", false, "Continue previous conversation")
@@ -126,6 +126,7 @@ func main() {
 	}
 
 	client_args := LLM.Client_Args{
+		Model:         model,
 		Prompt:        &prompt,
 		System_Prompt: &system_prompt,
 		Context:       prompt_context,
@@ -134,20 +135,25 @@ func main() {
 		Log:           log_fd,
 	}
 
-	chat_with_llm(*model, client_args, *continue_chat)
+	chat_with_llm(client_args, *continue_chat)
 }
 
-func chat_with_llm(model string, args LLM.Client_Args, continue_chat bool) {
+func chat_with_llm(args LLM.Client_Args, continue_chat bool) {
 	var client LLM.Client
 	log := args.Log
+	model := *args.Model
 
 	switch model {
 	case "chatgpt":
-		client = LLM.New_OpenAI(*args.Max_Tokens)
+		api_url := "https://api.openai.com/v1/"
+		client = LLM.New_OpenAI(*args.Max_Tokens, "openai", api_url)
 	case "claude":
 		client = LLM.New_Anthropic(*args.Max_Tokens)
 	case "gemini":
 		client = LLM.New_Google(*args.Max_Tokens)
+	case "grok":
+		api_url := "https://api.x.ai/v1/"
+		client = LLM.New_OpenAI(*args.Max_Tokens, "xai", api_url)
 	default:
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
