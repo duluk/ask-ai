@@ -8,9 +8,12 @@ import (
 	"github.com/openai/openai-go/option"
 )
 
-func New_OpenAI(max_tokens int) *OpenAI {
-	api_key := get_client_key("openai")
-	client := openai.NewClient(option.WithAPIKey(api_key))
+func New_OpenAI(max_tokens int, api_llc string, api_url string) *OpenAI {
+	api_key := get_client_key(api_llc)
+	client := openai.NewClient(
+		option.WithAPIKey(api_key),
+		option.WithBaseURL(api_url),
+	)
 
 	return &OpenAI{API_Key: api_key, Tokens: max_tokens, Client: client}
 }
@@ -28,6 +31,15 @@ func (cs *OpenAI) Chat(args Client_Args) (string, error) {
 		}
 	}
 
+	const ChatModelGrokBeta openai.ChatModel = "grok-beta"
+	var model openai.ChatModel
+	switch *args.Model {
+	case "chatgpt":
+		model = openai.ChatModelGPT4o
+	case "grok":
+		model = ChatModelGrokBeta
+	}
+
 	ctx := context.Background()
 	stream := client.Chat.Completions.NewStreaming(
 		ctx,
@@ -37,7 +49,7 @@ func (cs *OpenAI) Chat(args Client_Args) (string, error) {
 				openai.UserMessage(*args.Prompt),
 			}),
 			// Seed:        openai.Int(1), // Same seed/parameters will attempt to return the same results
-			Model:       openai.F(openai.ChatModelGPT4o),
+			Model:       openai.F(model),
 			MaxTokens:   openai.Int(int64(*args.Max_Tokens)),
 			Temperature: openai.Float(float64(*args.Temperature)), // Controls randomness (0.0 to 2.0)
 			// TopP:             openai.Float(1.0),                        // Controls diversity via nucleus sampling; alter this or Temperature but not both

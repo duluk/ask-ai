@@ -5,6 +5,11 @@
 1. Add model flags like `--chatgpt`, `--sonnet`, etc instead of having to use
   `--model chatgpt`
 
+1. Add a --list-models flag to list all the models available. That's not
+   difficult, but I'm wondering if I can just pass one of those values in to
+   the Model field for that company's API? The flag would need to know which
+   API will be used - which company's models to list.
+
 ## Version 1.5
 1. Add support for a DB backend for storing chat logs
 ```sql

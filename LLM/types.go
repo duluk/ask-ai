@@ -43,6 +43,7 @@ type Google struct {
 }
 
 type Client_Args struct {
+	Model         *string
 	Prompt        *string
 	System_Prompt *string
 	Context       []LLM_Conversations
