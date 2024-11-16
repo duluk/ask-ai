@@ -29,10 +29,10 @@ func main() {
 	// object or structure. Maybe. Maybe it's fine...
 	model := pflag.StringP("model", "m", "claude", "Which LLM to use (claude|chatgpt|gemini|grok)")
 	context := pflag.IntP("context", "n", 0, "Use previous n messages for context")
-	cfg_file := pflag.StringP("config", "C", "", "Configuration file")
-	continue_chat := pflag.BoolP("continue", "c", false, "Continue previous conversation")
-	show_version := pflag.BoolP("version", "v", false, "Print version and exit")
-	show_full_version := pflag.BoolP("full-version", "V", false, "Print full version information and exit")
+	cfgFile := pflag.StringP("config", "C", "", "Configuration file")
+	continueChat := pflag.BoolP("continue", "c", false, "Continue previous conversation")
+	showVersion := pflag.BoolP("version", "v", false, "Print version and exit")
+	showFullVersion := pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 
 	pflag.StringP("log", "l", HOME+"/.config/ask-ai/ask-ai.chat.yml", "Chat log file")
 	pflag.StringP("system-prompt", "s", "", "System prompt for LLM")
@@ -41,21 +41,21 @@ func main() {
 
 	pflag.Parse()
 
-	if *show_version {
+	if *showVersion {
 		fmt.Println("ask-ai version: ", version)
 		os.Exit(0)
 	}
 
-	if *show_full_version {
+	if *showFullVersion {
 		fmt.Println("Version: ", version)
 		fmt.Println("Commit:  ", commit)
 		fmt.Println("Date:    ", date)
 		os.Exit(0)
 	}
 
-	if *cfg_file != "" {
+	if *cfgFile != "" {
 		// Validation will happen below with ReadInConfig()
-		viper.SetConfigFile(*cfg_file)
+		viper.SetConfigFile(*cfgFile)
 	} else {
 		viper.SetConfigName("config.yml")
 		viper.SetConfigType("yaml")
@@ -81,28 +81,28 @@ func main() {
 	viper.BindPFlag("model.system_prompt", pflag.Lookup("system-prompt"))
 
 	// Get configuration values (potentially overridden by flags)
-	log_fn := os.ExpandEnv(viper.GetString("log.file"))
-	system_prompt := viper.GetString("model.system_prompt")
-	max_tokens := viper.GetInt("model.max_tokens")
+	logFileName := os.ExpandEnv(viper.GetString("log.file"))
+	systemPrompt := viper.GetString("model.system_prompt")
+	maxTokens := viper.GetInt("model.max_tokens")
 	temperature := float32(viper.GetFloat64("model.temperature"))
 
 	var log_fd *os.File
-	log_fd, err = os.OpenFile(log_fn, os.O_RDWR|os.O_CREATE, 0644)
+	log_fd, err = os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		fmt.Println("Error with chat log file: ", err)
 	}
 	defer log_fd.Close()
 
 	/* CONTEXT? LOAD IT */
-	var prompt_context []LLM.LLM_Conversations
-	if *continue_chat {
-		prompt_context, err = LLM.Continue_Conversation(log_fd)
+	var promptContext []LLM.LLMConversations
+	if *continueChat {
+		promptContext, err = LLM.ContinueConversation(log_fd)
 		if err != nil {
 			fmt.Println("Error reading log for continuing chat: ", err)
 		}
 	}
 	if *context != 0 {
-		prompt_context, err = LLM.Last_n_Chats(log_fd, *context)
+		promptContext, err = LLM.LastNChats(log_fd, *context)
 		if err != nil {
 			fmt.Println("Error loading chat context from log: ", err)
 		}
@@ -125,20 +125,20 @@ func main() {
 		fmt.Println()
 	}
 
-	client_args := LLM.Client_Args{
-		Model:         model,
-		Prompt:        &prompt,
-		System_Prompt: &system_prompt,
-		Context:       prompt_context,
-		Max_Tokens:    &max_tokens,
-		Temperature:   &temperature,
-		Log:           log_fd,
+	clientArgs := LLM.ClientArgs{
+		Model:        model,
+		Prompt:       &prompt,
+		SystemPrompt: &systemPrompt,
+		Context:      promptContext,
+		MaxTokens:    &maxTokens,
+		Temperature:  &temperature,
+		Log:          log_fd,
 	}
 
-	chat_with_llm(client_args, *continue_chat)
+	chatWithLLM(clientArgs, *continueChat)
 }
 
-func chat_with_llm(args LLM.Client_Args, continue_chat bool) {
+func chatWithLLM(args LLM.ClientArgs, continueChat bool) {
 	var client LLM.Client
 	log := args.Log
 	model := *args.Model
@@ -146,19 +146,19 @@ func chat_with_llm(args LLM.Client_Args, continue_chat bool) {
 	switch model {
 	case "chatgpt":
 		api_url := "https://api.openai.com/v1/"
-		client = LLM.New_OpenAI(*args.Max_Tokens, "openai", api_url)
+		client = LLM.NewOpenAI(*args.MaxTokens, "openai", api_url)
 	case "claude":
-		client = LLM.New_Anthropic(*args.Max_Tokens)
+		client = LLM.NewAnthropic(*args.MaxTokens)
 	case "gemini":
-		client = LLM.New_Google(*args.Max_Tokens)
+		client = LLM.NewGoogle(*args.MaxTokens)
 	case "grok":
 		api_url := "https://api.x.ai/v1/"
-		client = LLM.New_OpenAI(*args.Max_Tokens, "xai", api_url)
+		client = LLM.NewOpenAI(*args.MaxTokens, "xai", api_url)
 	default:
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
 	}
-	LLM.Log_Chat(log, "User", *args.Prompt, "", continue_chat)
+	LLM.LogChat(log, "User", *args.Prompt, "", continueChat)
 
 	fmt.Printf("Assistant: ")
 	resp, err := client.Chat(args)
@@ -168,5 +168,5 @@ func chat_with_llm(args LLM.Client_Args, continue_chat bool) {
 	}
 	fmt.Printf("\n\n-%s\n", model)
 
-	LLM.Log_Chat(log, "Assistant", resp, model, continue_chat)
+	LLM.LogChat(log, "Assistant", resp, model, continueChat)
 }

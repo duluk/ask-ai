@@ -8,26 +8,26 @@ import (
 	"github.com/openai/openai-go/option"
 )
 
-func New_OpenAI(max_tokens int, api_llc string, api_url string) *OpenAI {
-	api_key := get_client_key(api_llc)
+func NewOpenAI(maxTokens int, apiLLC string, apiURL string) *OpenAI {
+	apiKey := getClientKey(apiLLC)
 	client := openai.NewClient(
-		option.WithAPIKey(api_key),
-		option.WithBaseURL(api_url),
+		option.WithAPIKey(apiKey),
+		option.WithBaseURL(apiURL),
 	)
 
-	return &OpenAI{API_Key: api_key, Tokens: max_tokens, Client: client}
+	return &OpenAI{APIKey: apiKey, Tokens: maxTokens, Client: client}
 }
 
-func (cs *OpenAI) Chat(args Client_Args) (string, error) {
+func (cs *OpenAI) Chat(args ClientArgs) (string, error) {
 	client := cs.Client
 
-	var msg_context string
+	var msgCtx string
 	for _, msg := range args.Context {
 		switch msg.Role {
 		case "User":
-			msg_context += "User: " + msg.Content + "\n"
+			msgCtx += "User: " + msg.Content + "\n"
 		case "Assistant":
-			msg_context += "Assistant: " + msg.Content + "\n"
+			msgCtx += "Assistant: " + msg.Content + "\n"
 		}
 	}
 
@@ -45,12 +45,12 @@ func (cs *OpenAI) Chat(args Client_Args) (string, error) {
 		ctx,
 		openai.ChatCompletionNewParams{
 			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-				openai.AssistantMessage(msg_context),
+				openai.AssistantMessage(msgCtx),
 				openai.UserMessage(*args.Prompt),
 			}),
 			// Seed:        openai.Int(1), // Same seed/parameters will attempt to return the same results
 			Model:       openai.F(model),
-			MaxTokens:   openai.Int(int64(*args.Max_Tokens)),
+			MaxTokens:   openai.Int(int64(*args.MaxTokens)),
 			Temperature: openai.Float(float64(*args.Temperature)), // Controls randomness (0.0 to 2.0)
 			// TopP:             openai.Float(1.0),                        // Controls diversity via nucleus sampling; alter this or Temperature but not both
 			// N:                openai.Int(1),                            // Number of completions to generate
