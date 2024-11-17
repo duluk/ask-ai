@@ -160,7 +160,7 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool) {
 	}
 	LLM.LogChat(log, "User", *args.Prompt, "", continueChat)
 
-	fmt.Printf("Assistant: ")
+	fmt.Println("Assistant: ")
 	resp, err := client.Chat(args)
 	if err != nil {
 		fmt.Println("Error: ", err)

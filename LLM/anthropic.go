@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/duluk/ask-ai/linewrap"
+
 	"github.com/liushuangls/go-anthropic/v2"
 )
 
@@ -51,6 +53,8 @@ func (cs *Anthropic) Chat(args ClientArgs) (string, error) {
 
 	msgCtx := convertToAnthropicMessages(args.Context)
 	msgCtx = append(msgCtx, anthropic.NewUserTextMessage(*prompt))
+
+	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth)
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
@@ -67,7 +71,7 @@ func (cs *Anthropic) Chat(args ClientArgs) (string, error) {
 			},
 			// Print the response as it comes in, as a streaming chat...
 			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
-				fmt.Printf(*data.Delta.Text)
+				wrapper.Write([]byte(*data.Delta.Text))
 			},
 		})
 	if err != nil {
