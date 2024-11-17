@@ -11,6 +11,10 @@ import (
 
 // These fields need to have capital lettesr to be exported (ugh)
 
+// TODO: make this configurable
+const TermWidth = 80
+const TabWidth = 4
+
 type LLMConversations struct {
 	Role            string `yaml:"role"`
 	Content         string `yaml:"content"`

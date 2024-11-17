@@ -10,10 +10,6 @@ import (
 	"github.com/openai/openai-go/option"
 )
 
-// TODO: make this configurable
-const termWidth = 80
-const tabWidth = 4
-
 func NewOpenAI(maxTokens int, apiLLC string, apiURL string) *OpenAI {
 	apiKey := getClientKey(apiLLC)
 	client := openai.NewClient(
@@ -69,7 +65,7 @@ func (cs *OpenAI) Chat(args ClientArgs) (string, error) {
 	// result as if it's a stream of responses, which looks more
 	// conversational.
 	var resp string
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth)
+	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth)
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/duluk/ask-ai/linewrap"
+
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -62,6 +64,7 @@ func (cs *Google) Chat(args ClientArgs) (string, error) {
 	var resp_str string
 	prompt := buildPrompt(args.Context, *args.Prompt)
 	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
+	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth)
 	for {
 		resp, err := iter.Next()
 		if err == iterator.Done {
@@ -71,8 +74,9 @@ func (cs *Google) Chat(args ClientArgs) (string, error) {
 			return "", err
 		}
 
-		resp_str += fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
-		fmt.Printf("%s", resp.Candidates[0].Content.Parts[0])
+		r := fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
+		resp_str += r
+		wrapper.Write([]byte(r))
 	}
 
 	return resp_str, nil
