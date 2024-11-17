@@ -4,9 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/duluk/ask-ai/linewrap"
+
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 )
+
+// TODO: make this configurable
+const termWidth = 80
+const tabWidth = 4
 
 func NewOpenAI(maxTokens int, apiLLC string, apiURL string) *OpenAI {
 	apiKey := getClientKey(apiLLC)
@@ -62,17 +68,18 @@ func (cs *OpenAI) Chat(args ClientArgs) (string, error) {
 	// response according to its own internal desires and whims, presenting the
 	// result as if it's a stream of responses, which looks more
 	// conversational.
-	// TODO: I need to line-wrap the responses so they don't go all the way
-	// across the entire screen.
-	// TODO: make the `log` an aggregate of streams, as in the TODO for the
-	// main app; so that it's not just going to stdout by default
 	var resp string
+	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth)
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {
 			data := evt.Choices[0].Delta.Content
+			if _, err := wrapper.Write([]byte(data)); err != nil {
+				fmt.Printf("Error writing to wrapper: %s\n", err)
+				return "", err
+			}
 			resp += data
-			fmt.Printf(data)
+			// fmt.Printf(data)
 		}
 	}
 
