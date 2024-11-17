@@ -6,9 +6,9 @@ The utility everyone has written for themselves, a basic CLI tool for asking LLM
 
 Full disclosure: this is my first Go project. I mainly write in Ruby, C and Python.
 
-## Installation
+## Building
 
-Just build the program and run it:
+Go:
 
 ```bash
 $ go mod tidy
@@ -17,14 +17,20 @@ $ go build ask-ai.go
 
 Or, as I'm doing now (bc I'm old):
 ```bash
-$ make build
+$ make
+```
+
+## Installation
+
+```bash
+$ make install
 ```
 
 ## Usage
 
 #### Set the API Key
 1. Set {OPENAI,ANTHROPIC}_API_KEY in your environment; or
-1. Put the key in a file located at `$HOME/.config/ask-ai/{openai,anthropic,google}-api-key`
+1. Put the key in a file located at `$HOME/.config/ask-ai/{openai,anthropic,google,xai}-api-key`
 
 #### Ask a model a question
 ```bash
@@ -42,7 +48,18 @@ $ bin/ask-ai
 $ bin/ask-ai --model gemini "Why do you pull in so many modules for th Go API?"
 ```
 
+* Continue the conversation
+```bash
+$ bin/ask-ai --model grok "When is your knowledge cut-off?"
+<...>
+$ bin/ask-ai --model grok --continue "So you're always mostly up to date?"
+```
+
+* Use last `n` queries for context:
+```bash
+$ bin/ask-ai --context 3 "What are the last 3 things we talked abuot?"
+```
+
 ### [NOTE]
 > This is a work in progress and not all functionality has been added.
->
-> I also plan to provide a flag for context - that is, use the last `n` queries to send to the LLM for context.
+
