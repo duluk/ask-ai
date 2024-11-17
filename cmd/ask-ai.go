@@ -113,9 +113,7 @@ func main() {
 	if pflag.NArg() > 0 {
 		prompt = pflag.Arg(0)
 	} else {
-		// TODO: Make the prompt, `*model+"> "` and remove 'Using model...'
-		fmt.Println("Using model:", *model)
-		fmt.Print("> ")
+		fmt.Printf("%s> ", *model)
 		reader := bufio.NewReader(os.Stdin)
 		prompt, err = reader.ReadString('\n')
 		if err != nil {
