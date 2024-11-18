@@ -18,7 +18,7 @@ TST_FILES := $(wildcard test/*.go)
 CP := $(shell which cp)
 GO := $(shell which go)
 
-CPFLAGS := --preserve=mode,timestamps
+CPFLAGS := -p
 GOFLAGS := -ldflags "-X 'main.commit=$(shell git rev-parse --short HEAD)' -X 'main.date=$(shell date -u '+%Y-%m-%d %H:%M:%S')'"
 TESTFLAGS := -v -cover -coverprofile=coverage.out
 
