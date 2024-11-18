@@ -117,6 +117,9 @@ func main() {
 		reader := bufio.NewReader(os.Stdin)
 		prompt, err = reader.ReadString('\n')
 		if err != nil {
+			if err.Error() == "EOF" {
+				os.Exit(0)
+			}
 			fmt.Println("Error reading prompt: ", err)
 			os.Exit(1)
 		}
