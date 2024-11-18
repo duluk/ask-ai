@@ -118,6 +118,7 @@ func main() {
 		prompt, err = reader.ReadString('\n')
 		if err != nil {
 			if err.Error() == "EOF" {
+				fmt.Println()
 				os.Exit(0)
 			}
 			fmt.Println("Error reading prompt: ", err)
