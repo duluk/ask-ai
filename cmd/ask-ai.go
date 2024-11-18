@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/duluk/ask-ai/LLM"
+	"github.com/duluk/ask-ai/pkg/LLM"
 )
 
 const version = "0.3.0"

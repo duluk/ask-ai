@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/duluk/ask-ai/linewrap"
+	"github.com/duluk/ask-ai/pkg/linewrap"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"

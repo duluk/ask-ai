@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/duluk/ask-ai/linewrap"
+	"github.com/duluk/ask-ai/pkg/linewrap"
 
 	"github.com/liushuangls/go-anthropic/v2"
 )

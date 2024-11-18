@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/duluk/ask-ai/linewrap"
+	"github.com/duluk/ask-ai/pkg/linewrap"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
