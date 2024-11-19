@@ -52,20 +52,22 @@ func createConversationsTable(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
-		return fmt.Errorf("Error creating conversations table: %v", err)
+		return fmt.Errorf("error creating conversations table: %v", err)
 	}
 
 	return nil
 }
 
-func (sqlDB *SQLite3DB) InsertConversation(prompt, response, modelName string) {
+func (sqlDB *SQLite3DB) InsertConversation(prompt, response, modelName string) error {
 	_, err := sqlDB.db.Exec(`
 		INSERT INTO conversations (prompt, response, model_name)
 		VALUES (?, ?, ?);
 	`, prompt, response, modelName)
 	if err != nil {
-		log.Fatalf("Error inserting conversation into database: %v", err)
+		return fmt.Errorf("%v", err)
 	}
+
+	return nil
 }
 
 // TODO: some serious refactoring can be done with these query functions
@@ -74,7 +76,7 @@ func QueryAllConversations(db *sql.DB) error {
 		SELECT * FROM conversations;
 	`)
 	if err != nil {
-		return fmt.Errorf("Error querying database for conversations: %v", err)
+		return fmt.Errorf("error querying database for conversations: %v", err)
 	}
 
 	for rows.Next() {
@@ -85,7 +87,7 @@ func QueryAllConversations(db *sql.DB) error {
 		var modelName string
 		err := rows.Scan(&id, &timestamp, &prompt, &response, &modelName)
 		if err != nil {
-			return fmt.Errorf("Error scanning row: %v", err)
+			return fmt.Errorf("error scanning row: %v", err)
 		}
 
 		fmt.Printf("id: %d, timestamp: %s, prompt: %s, response: %s, model_name: %s\n", id, timestamp, prompt, response, modelName)
@@ -99,7 +101,7 @@ func QueryConversationsByModel(db *sql.DB, modelName string) error {
 		SELECT * FROM conversations WHERE model_name = ?;
 	`, modelName)
 	if err != nil {
-		return fmt.Errorf("Error querying database for conversations: %v", err)
+		return fmt.Errorf("error querying database for conversations: %v", err)
 	}
 
 	for rows.Next() {
@@ -110,7 +112,7 @@ func QueryConversationsByModel(db *sql.DB, modelName string) error {
 		var modelName string
 		err := rows.Scan(&id, &timestamp, &prompt, &response, &modelName)
 		if err != nil {
-			return fmt.Errorf("Error scanning row: %v", err)
+			return fmt.Errorf("error scanning row: %v", err)
 		}
 
 		fmt.Printf("id: %d, timestamp: %s, prompt: %s, response: %s, model_name: %s\n", id, timestamp, prompt, response, modelName)
@@ -124,7 +126,7 @@ func QueryConversationsForResponseStr(db *sql.DB, response string) error {
 		SELECT * FROM conversations WHERE response LIKE ?;
 	`, response)
 	if err != nil {
-		return fmt.Errorf("Error querying database for conversations: %v", err)
+		return fmt.Errorf("error querying database for conversations: %v", err)
 	}
 
 	for rows.Next() {
@@ -135,7 +137,7 @@ func QueryConversationsForResponseStr(db *sql.DB, response string) error {
 		var modelName string
 		err := rows.Scan(&id, &timestamp, &prompt, &response, &modelName)
 		if err != nil {
-			return fmt.Errorf("Error scanning row: %v", err)
+			return fmt.Errorf("error scanning row: %v", err)
 		}
 
 		fmt.Printf("id: %d, timestamp: %s, prompt: %s, response: %s, model_name: %s\n", id, timestamp, prompt, response, modelName)
@@ -149,7 +151,7 @@ func QueryConversationsForPromptStr(db *sql.DB, prompt string) error {
 		SELECT * FROM conversations WHERE prompt LIKE ?;
 	`, prompt)
 	if err != nil {
-		return fmt.Errorf("Error querying database for conversations: %v", err)
+		return fmt.Errorf("error querying database for conversations: %v", err)
 	}
 
 	for rows.Next() {
@@ -160,7 +162,7 @@ func QueryConversationsForPromptStr(db *sql.DB, prompt string) error {
 		var modelName string
 		err := rows.Scan(&id, &timestamp, &prompt, &response, &modelName)
 		if err != nil {
-			return fmt.Errorf("Error scanning row: %v", err)
+			return fmt.Errorf("error scanning row: %v", err)
 		}
 
 		fmt.Printf("id: %d, timestamp: %s, prompt: %s, response: %s, model_name: %s\n", id, timestamp, prompt, response, modelName)
@@ -174,7 +176,7 @@ func QueryConversationsBySearchStr(db *sql.DB, search string) error {
 		SELECT * FROM conversations WHERE prompt LIKE ? OR response LIKE ? OR model_name LIKE ?;
 	`, search, search, search)
 	if err != nil {
-		return fmt.Errorf("Error querying database for conversations: %v", err)
+		return fmt.Errorf("error querying database for conversations: %v", err)
 	}
 
 	for rows.Next() {
@@ -185,7 +187,7 @@ func QueryConversationsBySearchStr(db *sql.DB, search string) error {
 		var modelName string
 		err := rows.Scan(&id, &timestamp, &prompt, &response, &modelName)
 		if err != nil {
-			return fmt.Errorf("Error scanning row: %v", err)
+			return fmt.Errorf("error scanning row: %v", err)
 		}
 
 		fmt.Printf("id: %d, timestamp: %s, prompt: %s, response: %s, model_name: %s\n", id, timestamp, prompt, response, modelName)
@@ -199,7 +201,7 @@ func QueryConversationsByPrompt(db *sql.DB, prompt string) error {
 		SELECT * FROM conversations WHERE prompt = ?;
 	`, prompt)
 	if err != nil {
-		return fmt.Errorf("Error querying database for conversations: %v", err)
+		return fmt.Errorf("error querying database for conversations: %v", err)
 	}
 
 	for rows.Next() {
@@ -222,7 +224,7 @@ func QueryConversationsByPrompt(db *sql.DB, prompt string) error {
 func CloseDB(db *sql.DB) {
 	err := db.Close()
 	if err != nil {
-		log.Fatalf("Error closing database: %v", err)
+		log.Fatalf("error closing database: %v", err)
 	}
 }
 
@@ -231,7 +233,7 @@ func DeleteConversations(db *sql.DB) {
 		DELETE FROM conversations;
 	`)
 	if err != nil {
-		log.Fatalf("Error deleting conversations from database: %v", err)
+		log.Fatalf("error deleting conversations from database: %v", err)
 	}
 }
 
@@ -240,21 +242,21 @@ func DeleteConversationsTable(db *sql.DB) {
 		DROP TABLE conversations;
 	`)
 	if err != nil {
-		log.Fatalf("Error deleting conversations table from database: %v", err)
+		log.Fatalf("error deleting conversations table from database: %v", err)
 	}
 }
 
 func DeleteDB(dbPath string) {
 	err := deleteFile(dbPath)
 	if err != nil {
-		log.Fatalf("Error deleting database: %v", err)
+		log.Fatalf("error deleting database: %v", err)
 	}
 }
 
 func deleteFile(filePath string) error {
 	err := os.Remove(filePath)
 	if err != nil {
-		return fmt.Errorf("Error deleting file: %v", err)
+		return fmt.Errorf("error deleting file: %v", err)
 	}
 	return nil
 }

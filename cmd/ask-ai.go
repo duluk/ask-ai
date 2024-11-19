@@ -178,5 +178,8 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.SQLite3DB)
 	fmt.Printf("\n\n-%s\n", model)
 
 	LLM.LogChat(log, "Assistant", resp, model, continueChat)
-	db.InsertConversation(*args.Prompt, resp, model)
+	err = db.InsertConversation(*args.Prompt, resp, model)
+	if err != nil {
+		fmt.Println("error inserting conversation into database: ", err)
+	}
 }
