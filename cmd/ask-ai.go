@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/duluk/ask-ai/pkg/LLM"
+	"github.com/duluk/ask-ai/pkg/database"
 )
 
 const version = "0.3.0"
@@ -125,6 +126,12 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println()
+	}
+
+	db, err := database.NewDB(HOME + "/.config/ask-ai/ask-ai.db")
+	if err != nil {
+		fmt.Println("Error opening database: ", err)
+		os.Exit(1)
 	}
 
 	clientArgs := LLM.ClientArgs{
