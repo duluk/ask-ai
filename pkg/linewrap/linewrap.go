@@ -45,15 +45,18 @@ func (lw *LineWrapper) Write(data []byte) (n int, err error) {
 			if lw.currWidth != 0 {
 				buffer.WriteByte(' ')
 			}
-			// ...unless the next character is a space, then we want to write
-			// it. This is for code indentation. However, there is the
-			// possibility that we are reading a line that ends on exactly
-			// maxWidth, followed by two spaces on the beginning of the next
-			// line, both of which would be printed even though we wouldn't
-			// want that. I'm not sure how to account for that.
-			if lw.currWidth == 0 && data[i+1] == ' ' {
-				buffer.WriteByte(' ')
+			// ...unless the next character is a space (and is within bounds),
+			// then we want to write it. This is for code indentation. However,
+			// there is the possibility that we are reading a line that ends on
+			// exactly maxWidth, followed by two spaces on the beginning of the
+			// next line, both of which would be printed even though we
+			// wouldn't want that. I'm not sure how to account for that.
+			if lw.currWidth == 0 && i+1 < len(data) {
+				if data[i+1] == ' ' {
+					buffer.WriteByte(' ')
+				}
 			}
+
 			// We still need to count the width; otherwise, all initial spaces
 			// will likely be ignored
 			lw.currWidth++
