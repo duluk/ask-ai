@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/duluk/ask-ai/pkg/LLM"
+	"github.com/duluk/ask-ai/pkg/database"
 )
 
 const version = "0.3.0"
@@ -127,6 +128,12 @@ func main() {
 		fmt.Println()
 	}
 
+	db, err := database.NewDB(HOME + "/.config/ask-ai/ask-ai.db")
+	if err != nil {
+		fmt.Println("Error opening database: ", err)
+		os.Exit(1)
+	}
+
 	clientArgs := LLM.ClientArgs{
 		Model:        model,
 		Prompt:       &prompt,
@@ -137,10 +144,10 @@ func main() {
 		Log:          log_fd,
 	}
 
-	chatWithLLM(clientArgs, *continueChat)
+	chatWithLLM(clientArgs, *continueChat, db)
 }
 
-func chatWithLLM(args LLM.ClientArgs, continueChat bool) {
+func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.SQLite3DB) {
 	var client LLM.Client
 	log := args.Log
 	model := *args.Model
@@ -171,4 +178,5 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool) {
 	fmt.Printf("\n\n-%s\n", model)
 
 	LLM.LogChat(log, "Assistant", resp, model, continueChat)
+	db.InsertConversation(*args.Prompt, resp, model)
 }

@@ -5,6 +5,7 @@ go 1.22.7
 require (
 	github.com/google/generative-ai-go v0.18.0
 	github.com/liushuangls/go-anthropic/v2 v2.11.0
+	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/openai/openai-go v0.1.0-alpha.37
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
