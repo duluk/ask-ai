@@ -36,6 +36,7 @@ func main() {
 	showFullVersion := pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 
 	pflag.StringP("log", "l", HOME+"/.config/ask-ai/ask-ai.chat.yml", "Chat log file")
+	pflag.StringP("database", "d", HOME+"/.config/ask-ai/ask-ai.db", "Database file")
 	pflag.StringP("system-prompt", "s", "", "System prompt for LLM")
 	pflag.IntP("max-tokens", "t", 4096, "Maximum tokens to generate")
 	pflag.Float32P("temperature", "T", 0.7, "Temperature for generation")
@@ -86,6 +87,7 @@ func main() {
 	systemPrompt := viper.GetString("model.system_prompt")
 	maxTokens := viper.GetInt("model.max_tokens")
 	temperature := float32(viper.GetFloat64("model.temperature"))
+	dbFile := os.ExpandEnv(viper.GetString("database.file"))
 
 	var log_fd *os.File
 	log_fd, err = os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE, 0644)
@@ -128,11 +130,12 @@ func main() {
 		fmt.Println()
 	}
 
-	db, err := database.NewDB(HOME + "/.config/ask-ai/ask-ai.db")
+	db, err := database.NewDB(dbFile)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		os.Exit(1)
 	}
+	defer db.Close()
 
 	clientArgs := LLM.ClientArgs{
 		Model:        model,
@@ -147,7 +150,7 @@ func main() {
 	chatWithLLM(clientArgs, *continueChat, db)
 }
 
-func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.SQLite3DB) {
+func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 	var client LLM.Client
 	log := args.Log
 	model := *args.Model
@@ -178,7 +181,7 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.SQLite3DB)
 	fmt.Printf("\n\n-%s\n", model)
 
 	LLM.LogChat(log, "Assistant", resp, model, continueChat)
-	err = db.InsertConversation(*args.Prompt, resp, model)
+	err = db.InsertConversation(*args.Prompt, resp, model, *args.Temperature)
 	if err != nil {
 		fmt.Println("error inserting conversation into database: ", err)
 	}
