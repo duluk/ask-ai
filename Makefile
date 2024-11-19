@@ -12,7 +12,6 @@ MAIN_BINARY := ask-ai
 
 CMD_FILES := $(wildcard cmd/*.go)
 BIN_FILES := $(patsubst cmd/%.go,%,$(CMD_FILES))
-PKG_FILES := $(wildcard LLM/*.go)
 TST_FILES := $(wildcard test/*.go)
 
 CP := $(shell which cp)
@@ -24,30 +23,34 @@ TESTFLAGS := -v -cover -coverprofile=coverage.out
 
 $(shell mkdir -p $(BINARY_DIR))
 
-all: $(addprefix $(BINARY_DIR)/,$(BIN_FILES))
+all: check build
 
-$(BINARY_DIR)/%: cmd/%.go vet
+build: $(addprefix $(BINARY_DIR)/,$(BIN_FILES))
+
+$(BINARY_DIR)/%: cmd/%.go
 	$(GO) build $(GOFLAGS) -o $@ $<
 
 list:
 	@echo "CMD_FILES: $(CMD_FILES)"
 	@echo "BIN_FILES: $(BIN_FILES)"
-	@echo "PKG_FILES: $(PKG_FILES)"
 	@echo "TST_FILES: $(TST_FILES)"
 
 clean:
-	rm -rf $(BINARY_DIR)/* coverage.out
+	rm -f $(addprefix $(BINARY_DIR)/,$(BIN_FILES)) coverage.out
+	# rm -rf $(BINARY_DIR)/* coverage.out
 
 test: $(TST_FILES)
 	$(GO) test $(TESTFLAGS) ./test || exit 1
 
-fmt:
+check: fmt vet
+
+fmt: $(CMD_FILES)
 	$(GO) fmt ./...
 
-vet: fmt
+vet: $(CMD_FILES) fmt
 	$(GO) vet ./...
 
-run:
+run: $(BINARY_DIR)/$(MAIN_BINARY)
 	./$(BINARY_DIR)/$(MAIN_BINARY)
 
 install: all
@@ -61,4 +64,4 @@ install: all
 # files. This is important because if a file of the same name actually exists,
 # it may not be executed if the timestamp hasn't changed. That's not what we
 # want for these.
-.PHONY: all list clean test fmt vet run install
+.PHONY: all list check clean test fmt vet run install
