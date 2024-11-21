@@ -108,7 +108,7 @@ func ContinueConversation(logFd *os.File) ([]LLMConversations, error) {
 		}
 	}
 
-	// -1 to get the first user prompt for the conversation
+	// n-1 to get the first user prompt for the conversation
 	return chat[lastConv-1:], nil
 }
 
