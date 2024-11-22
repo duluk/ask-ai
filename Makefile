@@ -12,6 +12,7 @@ MAIN_BINARY := ask-ai
 
 CMD_FILES := $(wildcard cmd/*.go)
 BIN_FILES := $(patsubst cmd/%.go,%,$(CMD_FILES))
+PKG_FILES := $(wildcard pkg/**/*.go)
 TST_FILES := $(wildcard test/*.go)
 
 CP := $(shell which cp)
@@ -33,6 +34,7 @@ $(BINARY_DIR)/%: cmd/%.go
 list:
 	@echo "CMD_FILES: $(CMD_FILES)"
 	@echo "BIN_FILES: $(BIN_FILES)"
+	@echo "PKG_FILES: $(PKG_FILES)"
 	@echo "TST_FILES: $(TST_FILES)"
 
 clean:

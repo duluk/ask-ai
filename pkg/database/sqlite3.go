@@ -64,7 +64,7 @@ func (sqlDB *ChatDB) InsertConversation(
 	_, err := sqlDB.db.Exec(`
 		INSERT INTO conversations (prompt, response, model_name, temperature)
 		VALUES (?, ?, ?, ?);
-	`, prompt, response, modelName)
+	`, prompt, response, modelName, temperature)
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
