@@ -10,14 +10,14 @@ import (
 	"github.com/openai/openai-go/option"
 )
 
-func NewOpenAI(maxTokens int, apiLLC string, apiURL string) *OpenAI {
+func NewOpenAI(apiLLC string, apiURL string) *OpenAI {
 	apiKey := getClientKey(apiLLC)
 	client := openai.NewClient(
 		option.WithAPIKey(apiKey),
 		option.WithBaseURL(apiURL),
 	)
 
-	return &OpenAI{APIKey: apiKey, Tokens: maxTokens, Client: client}
+	return &OpenAI{APIKey: apiKey, Client: client}
 }
 
 func (cs *OpenAI) Chat(args ClientArgs) (string, error) {

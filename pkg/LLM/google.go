@@ -21,7 +21,7 @@ func buildPrompt(msgCtx []LLMConversations, newPrompt string) string {
 	return prompt.String()
 }
 
-func NewGoogle(maxTokens int) *Google {
+func NewGoogle() *Google {
 	apiKey := getClientKey("google")
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
@@ -29,7 +29,7 @@ func NewGoogle(maxTokens int) *Google {
 		panic(err)
 	}
 
-	return &Google{APIKey: apiKey, Tokens: maxTokens, Client: client, Context: ctx}
+	return &Google{APIKey: apiKey, Client: client, Context: ctx}
 }
 
 func (cs *Google) SimpleChat(args ClientArgs) error {

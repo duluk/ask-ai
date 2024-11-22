@@ -29,19 +29,16 @@ type Client interface {
 
 type Anthropic struct {
 	APIKey string
-	Tokens int
 	Client *anthropic.Client
 }
 
 type OpenAI struct {
 	APIKey string
-	Tokens int
 	Client *openai.Client
 }
 
 type Google struct {
 	APIKey  string
-	Tokens  int
 	Client  *genai.Client
 	Context context.Context
 }
