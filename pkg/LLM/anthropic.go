@@ -40,11 +40,11 @@ func convertToAnthropicMessages(chatHist []LLMConversations) []anthropic.Message
 	return anthropicMsgs
 }
 
-func NewAnthropic(maxTokens int) *Anthropic {
+func NewAnthropic() *Anthropic {
 	api_key := getClientKey("anthropic")
 	client := anthropic.NewClient(api_key)
 
-	return &Anthropic{APIKey: api_key, Tokens: maxTokens, Client: client}
+	return &Anthropic{APIKey: api_key, Client: client}
 }
 
 func (cs *Anthropic) Chat(args ClientArgs) (string, error) {

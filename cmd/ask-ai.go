@@ -159,14 +159,14 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 	switch model {
 	case "chatgpt":
 		api_url := "https://api.openai.com/v1/"
-		client = LLM.NewOpenAI(*args.MaxTokens, "openai", api_url)
+		client = LLM.NewOpenAI("openai", api_url)
 	case "claude":
-		client = LLM.NewAnthropic(*args.MaxTokens)
+		client = LLM.NewAnthropic()
 	case "gemini":
-		client = LLM.NewGoogle(*args.MaxTokens)
+		client = LLM.NewGoogle()
 	case "grok":
 		api_url := "https://api.x.ai/v1/"
-		client = LLM.NewOpenAI(*args.MaxTokens, "xai", api_url)
+		client = LLM.NewOpenAI("xai", api_url)
 	default:
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
