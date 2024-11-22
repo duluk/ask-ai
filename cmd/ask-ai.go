@@ -14,6 +14,7 @@ import (
 
 const version = "0.3.0"
 
+// Build-time variables for --full-version
 var (
 	commit string = "Unknown"
 	date   string = "Unknown"
@@ -179,6 +180,11 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 		os.Exit(1)
 	}
 	fmt.Printf("\n\n-%s\n", model)
+
+	// If we want the timestamp in the log and in the database to match
+	// exactly, we can set it here and pass it in to LogChat and
+	// InsertConversation. As it stands, each function uses the current
+	// timestamp when the function is executed.
 
 	LLM.LogChat(log, "Assistant", resp, model, continueChat)
 	err = db.InsertConversation(*args.Prompt, resp, model, *args.Temperature)
