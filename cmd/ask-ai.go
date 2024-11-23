@@ -131,6 +131,7 @@ func main() {
 		fmt.Println()
 	}
 
+	// If DB exists, it just opens it; otherwise, it creates it first
 	db, err := database.NewDB(dbFile)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
