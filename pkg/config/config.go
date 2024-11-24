@@ -15,6 +15,7 @@ type Options struct {
 	Context       int
 	ContextLength int
 	ContinueChat  bool
+	DumpConfig    bool
 	LogFileName   string
 	DBFileName    string
 	SystemPrompt  string
@@ -41,7 +42,8 @@ func Initialize() (*Options, error) {
 	viper.SetDefault("log.file", filepath.Join(configDir, "ask-ai.chat.yml"))
 	viper.SetDefault("database.file", filepath.Join(configDir, "ask-ai.db"))
 
-	// Handle config option separately so we can use it for defaults
+	// Handle config option separately so we can parse it,
+	// then use it for defaults
 	configFlags := pflag.NewFlagSet("config", pflag.ContinueOnError)
 	configFlags.StringP("config", "C", "", "Configuration file")
 	configFlags.ParseErrorsWhitelist.UnknownFlags = true
@@ -70,6 +72,7 @@ func Initialize() (*Options, error) {
 	pflag.Float32P("temperature", "T", float32(viper.GetFloat64("model.temperature")), "Temperature for generation")
 	pflag.BoolP("version", "v", false, "Print version and exit")
 	pflag.BoolP("full-version", "V", false, "Print full version information and exit")
+	pflag.BoolP("dump-config", "", false, "Dump configuration and exit")
 
 	// Parse all flags again
 	pflag.CommandLine.ParseErrorsWhitelist.UnknownFlags = true
@@ -87,6 +90,7 @@ func Initialize() (*Options, error) {
 	viper.BindPFlag("continue", pflag.Lookup("continue"))
 	viper.BindPFlag("log.file", pflag.Lookup("log"))
 	viper.BindPFlag("database.file", pflag.Lookup("database"))
+	viper.BindPFlag("dump-config", pflag.Lookup("dump-config"))
 	viper.BindPFlag("model.system_prompt", pflag.Lookup("system-prompt"))
 	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
 	viper.BindPFlag("model.context_length", pflag.Lookup("context-length"))
@@ -98,6 +102,7 @@ func Initialize() (*Options, error) {
 		Context:       viper.GetInt("context"),
 		ContextLength: viper.GetInt("model.context_length"),
 		ContinueChat:  viper.GetBool("continue"),
+		DumpConfig:    viper.GetBool("dump-config"),
 		LogFileName:   os.ExpandEnv(viper.GetString("log.file")),
 		DBFileName:    os.ExpandEnv(viper.GetString("database.file")),
 		SystemPrompt:  viper.GetString("model.system_prompt"),

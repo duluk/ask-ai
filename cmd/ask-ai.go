@@ -22,7 +22,10 @@ func main() {
 		fmt.Println("Error initializing config: ", err)
 		os.Exit(1)
 	}
-	config.DumpConfig(opts)
+
+	if opts.DumpConfig {
+		config.DumpConfig(opts)
+	}
 
 	var log_fd *os.File
 	log_fd, err = os.OpenFile(opts.LogFileName, os.O_RDWR|os.O_CREATE, 0644)
