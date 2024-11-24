@@ -57,6 +57,8 @@ func main() {
 		fmt.Printf("%s> ", opts.Model)
 		reader := bufio.NewReader(os.Stdin)
 		prompt, err = reader.ReadString('\n')
+		// Now promptly remove the newline we just captured
+		prompt = prompt[:len(prompt)-1]
 		if err != nil {
 			if err.Error() == "EOF" {
 				fmt.Println()
