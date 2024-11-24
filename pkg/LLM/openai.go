@@ -52,9 +52,9 @@ func (cs *OpenAI) Chat(args ClientArgs) (string, error) {
 				openai.UserMessage(*args.Prompt),
 			}),
 			// Seed:        openai.Int(1), // Same seed/parameters will attempt to return the same results
-			Model:       openai.F(model),
-			MaxTokens:   openai.Int(int64(*args.MaxTokens)),
-			Temperature: openai.Float(float64(*args.Temperature)), // Controls randomness (0.0 to 2.0)
+			Model:               openai.F(model),
+			MaxCompletionTokens: openai.Int(int64(*args.MaxTokens)),
+			Temperature:         openai.Float(float64(*args.Temperature)), // Controls randomness (0.0 to 2.0)
 			// TopP:             openai.Float(1.0),                // Controls diversity via nucleus sampling; alter this or Temperature but not both
 			// N:                openai.Int(1),                    // Number of completions to generate
 			// ResponseFormat:   openai.ChatResponseFormatDefault, // Format of the response
