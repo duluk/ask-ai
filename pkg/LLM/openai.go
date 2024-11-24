@@ -37,8 +37,9 @@ func (cs *OpenAI) Chat(args ClientArgs) (string, error) {
 	var model openai.ChatModel
 	switch *args.Model {
 	case "chatgpt":
-		// model = ChatModelO1Preview2024_09_12            ChatModel = "o1-preview-2024-09-12"
-		model = openai.ChatModelGPT4o
+		// model = ChatModelO1Preview2024_09_12       # ChatModel = "o1-preview-2024-09-12"
+		// model = openai.ChatModelGPT4o
+		model = openai.ChatModelO1Mini // Tailored for coding and math
 	case "grok":
 		model = ChatModelGrokBeta
 	}

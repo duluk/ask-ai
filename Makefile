@@ -19,7 +19,7 @@ CP := $(shell which cp)
 GO := $(shell which go)
 
 CPFLAGS := -p
-GOFLAGS := -ldflags "-X 'main.commit=$(shell git rev-parse --short HEAD)' -X 'main.date=$(shell date -u '+%Y-%m-%d %H:%M:%S')'"
+GOFLAGS := -ldflags "-X 'config.commit=$(shell git rev-parse --short HEAD)' -X 'config.date=$(shell date -u '+%Y-%m-%d %H:%M:%S')'"
 TESTFLAGS := -v -cover -coverprofile=coverage.out
 
 $(shell mkdir -p $(BINARY_DIR))
