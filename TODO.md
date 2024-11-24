@@ -8,7 +8,8 @@
 1. Add a --list-models flag to list all the models available. That's not
    difficult, but I'm wondering if I can just pass one of those values in to
    the Model field for that company's API? The flag would need to know which
-   API will be used - which company's models to list.
+   API will be used - which company's models to list. (it should default to the
+   specified model, which may be the default)
 
 ## Version 1.5
 1. Add support for a DB backend for storing chat logs
@@ -24,6 +25,7 @@ CREATE TABLE interactions (
 ```
 1. Use a package like `go-tf-idf` or `rake-go` for doing keyword analysis on
    the conversation to add to the database entry so they can be searched later.
+1. Manage stats in the conversation, such as tokens used, tokens received, etc.
 
 ## Version 2.0:
 1. Add a TUI interface (using bubbletea?) so the output looks good
@@ -52,3 +54,23 @@ CREATE TABLE interactions (
    like ai-query and ai-review and ai-compare and ai-cmd (etc) so that the
    commands can be piped together in traditional *NIX fashion? Versus one
    command that does everything?
+1. Smarter management of context length/conversation window. Instead of dumping
+   the entire conversation into the prompt, consider summarizing the
+   conversation as best is possible. (this is more difficult for coding I would
+   assume) There is also the option of using the current prompt, then looking
+   at the conversation in the database and extracting the relevant context as
+   needed.
+   - Some options:
+      - go-summarize or go-nlp (similar to Genism or Sumy)
+      - Using an LLM itself behind the scenes
+      - Using a keyword extraction library like go-rake or go-tf-idf
+      - Vector databases? Go: milvus-sdk-go, for milvus open source vector db
+      - SQLite FTS5 - for an sqlite database
+      - knowledge-graph - use a knoweldge graph to store the conversation for
+        capturing relationships and concepts
+        - Go: google/knowledge-graph
+   - Note: for coding conversations, this can cause issues as mentioned above.
+   Code conversations require retaining some detail. But there could be some
+   options like keeping only the last couple of conversational turns in tact
+   and summarizing what came before. Or keep the error messages/code snippets
+   in tact (eg using a vector db).
