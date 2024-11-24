@@ -69,7 +69,7 @@ func main() {
 	}
 
 	// If DB exists, it just opens it; otherwise, it creates it first
-	db, err := database.NewDB(opts.DBFileName)
+	db, err := database.NewDB(opts.DBFileName, opts.DBTable)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		os.Exit(1)
