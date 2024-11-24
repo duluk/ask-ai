@@ -28,7 +28,7 @@ all: check build
 
 build: $(addprefix $(BINARY_DIR)/,$(BIN_FILES))
 
-$(BINARY_DIR)/%: cmd/%.go
+$(BINARY_DIR)/%: cmd/%.go $(PKG_FILES)
 	$(GO) build $(GOFLAGS) -o $@ $<
 
 list:
@@ -38,8 +38,8 @@ list:
 	@echo "TST_FILES: $(TST_FILES)"
 
 clean:
-	rm -f $(addprefix $(BINARY_DIR)/,$(BIN_FILES)) coverage.out
-	# rm -rf $(BINARY_DIR)/* coverage.out
+	rm -rf $(BINARY_DIR)/* coverage.out
+	# rm -f $(addprefix $(BINARY_DIR)/,$(BIN_FILES)) coverage.out
 
 test: $(TST_FILES)
 	$(GO) test $(TESTFLAGS) ./test || exit 1
