@@ -105,7 +105,7 @@ func TestInitialize(t *testing.T) {
 			config: `
 model:
   default: "chatgpt"
-  max_tokens: 2048
+  max_tokens: 3172
   temperature: 0.5
 log:
   file: "/custom/log/path"
@@ -115,7 +115,7 @@ database:
 			validate: func(t *testing.T, opts *Options, err error) {
 				assert.NoError(t, err)
 				assert.Equal(t, "chatgpt", opts.Model)
-				assert.Equal(t, 2048, opts.MaxTokens)
+				assert.Equal(t, 3172, opts.MaxTokens)
 				assert.Equal(t, float32(0.5), opts.Temperature)
 				assert.Equal(t, "/custom/log/path", opts.LogFileName)
 				assert.Equal(t, "/custom/db/path", opts.DBFileName)
@@ -130,7 +130,7 @@ database:
 			config: `
 model:
   default: "chatgpt"
-  max_tokens: 2048
+  max_tokens: 512
 `,
 			validate: func(t *testing.T, opts *Options, err error) {
 				assert.NoError(t, err)
