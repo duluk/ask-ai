@@ -18,6 +18,7 @@ type Options struct {
 	DumpConfig    bool
 	LogFileName   string
 	DBFileName    string
+	DBTable       string
 	SystemPrompt  string
 	MaxTokens     int
 	Temperature   float32
@@ -105,6 +106,7 @@ func Initialize() (*Options, error) {
 		DumpConfig:    viper.GetBool("dump-config"),
 		LogFileName:   os.ExpandEnv(viper.GetString("log.file")),
 		DBFileName:    os.ExpandEnv(viper.GetString("database.file")),
+		DBTable:       viper.GetString("database.table"),
 		SystemPrompt:  viper.GetString("model.system_prompt"),
 		MaxTokens:     viper.GetInt("model.max_tokens"),
 		Temperature:   float32(viper.GetFloat64("model.temperature")),
@@ -168,6 +170,7 @@ func DumpConfig(cfg *Options) {
 	fmt.Printf("ContinueChat: %t\n", cfg.ContinueChat)
 	fmt.Printf("LogFileName: %s\n", cfg.LogFileName)
 	fmt.Printf("DBFileName: %s\n", cfg.DBFileName)
+	fmt.Printf("DBTable: %s\n", cfg.DBTable)
 	fmt.Printf("SystemPrompt: %s\n", cfg.SystemPrompt)
 	fmt.Printf("MaxTokens: %d\n", cfg.MaxTokens)
 	fmt.Printf("Temperature: %f\n", cfg.Temperature)
