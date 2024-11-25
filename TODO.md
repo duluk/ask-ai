@@ -48,6 +48,9 @@ CREATE TABLE interactions (
    searched. Very simple. Though it could turn into something like a web-based
    LLM chatbot, where conversations from the Web version and CLI version are
    stored in same place.
+1. When using the prompt (not passing in the prompt on the CLI), don't return
+   after the first answer but return to the prompt for more, continuing the
+   conversation.
 
 ## Structure Idea
 1. Should I create multiple individual commands that do something specific,
