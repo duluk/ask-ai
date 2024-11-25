@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -137,12 +138,22 @@ func removeConfigFlag(args []string) []string {
 			skip = true
 			continue
 		}
-		if strings.HasPrefix(arg, "--config=") {
-			continue
-		}
-		result = append(result, arg)
 	}
-	return result
+	return ""
+}
+
+// If there's an error getting the user, just returning the path unmodified
+func expandHomePath(path string) string {
+	if strings.HasPrefix(path, "~") {
+		currentUser, err := user.Current()
+		if err != nil {
+			// I'm always trying to sneak a goto in just to trigger
+			goto oopsies
+		}
+		return filepath.Join(currentUser.HomeDir, path[1:])
+	}
+oopsies:
+	return path
 }
 
 func setupConfigFile() error {
