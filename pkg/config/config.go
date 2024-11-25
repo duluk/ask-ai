@@ -35,6 +35,16 @@ var (
 func Initialize() (*Options, error) {
 	configDir := filepath.Join(os.Getenv("HOME"), ".config", "ask-ai")
 
+	// TODO: though I've put so much effort into the config file to read it
+	// first so that the values can be used as defaults (eg in --help), I'm
+	// starting to wonder if that's even what I want...
+	// Figure out the config file and read it first if there
+	pflag.StringP("config", "C", "", "Configuration file")
+	viper.BindPFlags(pflag.CommandLine)
+	if err := setupConfigFile(); err != nil {
+		return nil, fmt.Errorf("error setting up config: %w", err)
+	}
+
 	// Set baseline defaults
 	viper.SetDefault("model.default", "claude")
 	viper.SetDefault("model.context_length", 2048)
@@ -44,25 +54,8 @@ func Initialize() (*Options, error) {
 	viper.SetDefault("log.file", filepath.Join(configDir, "ask-ai.chat.yml"))
 	viper.SetDefault("database.file", filepath.Join(configDir, "ask-ai.db"))
 
-	// Handle config option separately so we can parse it,
-	// then use it for defaults
-	configFlags := pflag.NewFlagSet("config", pflag.ContinueOnError)
-	configFlags.StringP("config", "C", "", "Configuration file")
-	configFlags.ParseErrorsWhitelist.UnknownFlags = true
-	err := configFlags.Parse(os.Args[1:])
-	if err != nil {
-		return nil, fmt.Errorf("error parsing config flags: %v", err)
-	}
-	viper.BindPFlag("config", configFlags.Lookup("config"))
-
-	// Set up and read config file
-	if err := setupConfigFile(); err != nil {
-		return nil, fmt.Errorf("error setting up config: %w", err)
-	}
-
-	args := removeConfigFlag(os.Args[1:])
-
-	// Now define the rest of the flags using values from viper (which now has config file values)
+	// Now define the rest of the flags using values from viper (which now has
+	// config file values)
 	pflag.StringP("model", "m", viper.GetString("model.default"), "Which LLM to use (claude|chatgpt|gemini|grok)")
 	pflag.IntP("context", "n", 0, "Use previous n messages for context")
 	pflag.IntP("context-length", "l", viper.GetInt("model.context_length"), "Maximum context length")
@@ -76,17 +69,6 @@ func Initialize() (*Options, error) {
 	pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 	pflag.BoolP("dump-config", "", false, "Dump configuration and exit")
 
-	// Parse all flags again
-	pflag.CommandLine.ParseErrorsWhitelist.UnknownFlags = true
-	pflag.CommandLine.Parse(args)
-
-	// Handle version flags early
-	viper.BindPFlag("version", pflag.Lookup("version"))
-	viper.BindPFlag("full-version", pflag.Lookup("full-version"))
-	if handleVersionFlags() {
-		os.Exit(0)
-	}
-
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
 	viper.BindPFlag("continue", pflag.Lookup("continue"))
@@ -97,6 +79,16 @@ func Initialize() (*Options, error) {
 	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
 	viper.BindPFlag("model.context_length", pflag.Lookup("context-length"))
 	viper.BindPFlag("model.temperature", pflag.Lookup("temperature"))
+
+	viper.BindPFlag("version", pflag.Lookup("version"))
+	viper.BindPFlag("full-version", pflag.Lookup("full-version"))
+
+	pflag.Parse()
+
+	// Handle version flags and bail if necessary
+	if handleVersionFlags() {
+		os.Exit(0)
+	}
 
 	// Create and return options
 	return &Options{
@@ -126,17 +118,19 @@ func handleVersionFlags() bool {
 	return false
 }
 
-func removeConfigFlag(args []string) []string {
-	result := make([]string, 0, len(args))
-	skip := false
-	for _, arg := range args {
-		if skip {
-			skip = false
-			continue
+// This is pretty bad but it's a quick hack to get the config file because
+// nothing else is working. I need to parse and read the config file before
+// the rest of the options so that I can use the values from the config file
+// to set the defaults for the other options.
+func checkConfigFlag() string {
+	for i, arg := range os.Args {
+		if arg == "--config" || arg == "-C" {
+			if i+1 < len(os.Args) {
+				return os.Args[i+1]
+			}
 		}
-		if arg == "--config" || arg == "-c" {
-			skip = true
-			continue
+		if len(arg) > 8 && arg[:8] == "--config=" {
+			return arg[8:]
 		}
 	}
 	return ""
@@ -157,8 +151,10 @@ oopsies:
 }
 
 func setupConfigFile() error {
-	if cfgFile := viper.GetString("config"); cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	cfgFile := checkConfigFlag()
+
+	if cfgFile != "" {
+		viper.SetConfigFile(expandHomePath(cfgFile))
 	} else {
 		viper.SetConfigName("config")
 		viper.SetConfigType("yml")
