@@ -3,6 +3,7 @@ package LLM
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/duluk/ask-ai/pkg/linewrap"
@@ -66,7 +67,7 @@ func (cs *Google) Chat(args ClientArgs) (string, error) {
 	var resp_str string
 	prompt := buildPrompt(args.Context, *args.Prompt)
 	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
-	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth)
+	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
 	for {
 		resp, err := iter.Next()
 		if err == iterator.Done {
