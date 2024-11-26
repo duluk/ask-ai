@@ -2,7 +2,8 @@ package linewrap
 
 import (
 	"bytes"
-	"fmt"
+	// "fmt"
+	"io"
 	"strings"
 )
 
@@ -10,12 +11,14 @@ type LineWrapper struct {
 	maxWidth  int
 	currWidth int
 	tabWidth  int
+	writer    io.Writer
 }
 
-func NewLineWrapper(maxWidth int, tabWidth int) *LineWrapper {
+func NewLineWrapper(maxWidth, tabWidth int, lwWriter io.Writer) *LineWrapper {
 	return &LineWrapper{
 		maxWidth: maxWidth,
 		tabWidth: tabWidth,
+		writer:   lwWriter,
 	}
 }
 
@@ -71,6 +74,8 @@ func (lw *LineWrapper) Write(data []byte) (n int, err error) {
 		}
 	}
 
-	fmt.Print(buffer.String())
+	lw.writer.Write(buffer.Bytes())
+	// fmt.Print(buffer.String())
+
 	return len(data), nil
 }
