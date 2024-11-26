@@ -13,14 +13,15 @@ MAIN_BINARY := ask-ai
 CMD_FILES := $(wildcard cmd/*.go)
 BIN_FILES := $(patsubst cmd/%.go,%,$(CMD_FILES))
 PKG_FILES := $(wildcard pkg/**/*.go)
-TST_FILES := $(wildcard test/*.go)
+TST_FILES := $(wildcard pkg/**/*_test.go)
+TST_DIRS  := $(shell go list ./... | grep -v cmd)
 
 CP := $(shell which cp)
 GO := $(shell which go)
 
 CPFLAGS := -p
 GOFLAGS := -ldflags "-X 'github.com/duluk/ask-ai/pkg/config.commit=$(shell git rev-parse --short HEAD)' -X 'github.com/duluk/ask-ai/pkg/config.date=$(shell date -u '+%Y-%m-%d %H:%M:%S')'"
-TESTFLAGS := -v -cover -coverprofile=coverage.out
+TESTFLAGS := -cover -coverprofile=coverage.out
 
 $(shell mkdir -p $(BINARY_DIR))
 
@@ -41,8 +42,10 @@ clean:
 	rm -rf $(BINARY_DIR)/* coverage.out
 	# rm -f $(addprefix $(BINARY_DIR)/,$(BIN_FILES)) coverage.out
 
+# For verbose, run `make test VERBOSE=1` (or put VERBOSE=1 first); I'm not sure
+# how to pass `-v` from the CLI to this
 test: $(TST_FILES)
-	$(GO) test $(TESTFLAGS) ./test || exit 1
+	$(GO) test $(TESTFLAGS) $(if $(VERBOSE),-v) $(TST_DIRS) || exit 1
 
 check: fmt vet
 

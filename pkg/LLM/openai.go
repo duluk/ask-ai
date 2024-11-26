@@ -3,6 +3,7 @@ package LLM
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/duluk/ask-ai/pkg/linewrap"
 
@@ -67,7 +68,7 @@ func (cs *OpenAI) Chat(args ClientArgs) (string, error) {
 	// result as if it's a stream of responses, which looks more
 	// conversational.
 	var resp string
-	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth)
+	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {

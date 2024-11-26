@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/duluk/ask-ai/pkg/linewrap"
 
@@ -54,7 +55,7 @@ func (cs *Anthropic) Chat(args ClientArgs) (string, error) {
 	msgCtx := convertToAnthropicMessages(args.Context)
 	msgCtx = append(msgCtx, anthropic.NewUserTextMessage(*prompt))
 
-	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth)
+	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
