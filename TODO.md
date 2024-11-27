@@ -19,7 +19,54 @@
    different conversations to be used for continuation later. This would mean
    another flag to list-conversations, with ID. This would mean having the LLM
    (or some library) summarize the conversation for the one-line summary output.
+   - Print the ID of the current conversation/chat response at the bottom of
+   the response, providing the `--id` option to continue from that one. There
+   should probably be a chain of ids though, connecting the conversations.
+   Either through the DB or the YML log file, or both.
+   - But at minimum, it would be nice to see a conversation with its ID and
+   then use `--id` to continue from that one.
 1. Add a --list-conversations flag to list all the conversations available.
+1. Assuming the following is remotely correct:
+```
+### **2. How `max_tokens` Relates to Prompt and Context Size**
+
+- **Setting `max_tokens`:** This parameter specifically limits the length of the
+generated response. However, the effective maximum you can set for `max_tokens`
+depends on the length of your prompt and any previous context included in the conversation.
+
+- **Total Token Calculation:** The sum of tokens in the prompt and the `max_tokens`
+setting must not exceed the model's context window. Exceeding this limit will result
+in errors or truncated outputs.
+
+ **Example:**
+ - **Model Context Window:** 4096 tokens
+ - **Prompt Length:** 1500 tokens
+ - **Available for Response (`max_tokens`):** 4096 - 1500 = 2596 tokens
+
+### **3. Practical Implications**
+
+- **Optimizing Prompts:** Keep your prompts concise to maximize the potential length
+of responses. Redundant or unnecessary information in the prompt consumes valuable
+tokens that could otherwise be used for generating more detailed responses.
+
+- **Managing Conversations:** In multi-turn conversations, earlier parts of the
+dialogue consume tokens. As the conversation progresses, the available tokens for
+new responses decrease unless you implement strategies like summarizing past exchanges.
+```
+  Then I need to manage the tokens better. I could rename max_tokens in the
+  config to response tokens, then estimate the number of tokens used in the
+  prompt (with context), and add that to the response_tokens setting, to
+  attempt to allow the intended number of tokens in the response. If I'm able
+  to gather stats from the models' response, I can use the real number of
+  tokens used in the context and estimate just the prompt.
+
+  This is a real issue because my reponses are getting cut off. I believe it's
+  because the context (multi-turn conversation) is consuming most of the tokens
+  so there aren't that many left, when max_tokens is 'small', like 1024.
+
+  Another option, or additional, is the note below about smarter context
+  management, summarizing context as is reasonable (eg not code). That will
+  also reduce the context size. I need to see how other tools handle this.
 
 ## Version Later...
 1. Add support for --image and --file attachments for multi-modal models
@@ -37,6 +84,9 @@
    stored in same place.
 1. Use a package like `go-tf-idf` or `rake-go` for doing keyword analysis on
    the conversation to add to the database entry so they can be searched later.
+1. Maybe allow commands (/ commands?) in the stdin prompt so that the user
+   could do something like switch the model 'on the fly' in the middle of a
+   conversation.
 
 ## Structure Idea
 1. Should I create multiple individual commands that do something specific,
