@@ -7,11 +7,12 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	"gopkg.in/yaml.v2"
 )
 
-func LogChat(logFd *os.File, role string, content string, model string, continueChat bool) error {
+func LogChat(logFd *os.File, role string, content string, model string, continueChat bool, input_tokens, output_tokens int32) error {
 	// TODO: is it necessary to load the file every time? I suppose it's not
 	// the worst since this is a run-once program. But if the log is very
 	// large, it seems inefficient to read it all in, append to it, then
@@ -31,6 +32,8 @@ func LogChat(logFd *os.File, role string, content string, model string, continue
 		Model:           model,
 		Timestamp:       timestamp,
 		NewConversation: !continueChat,
+		InputTokens:     input_tokens,
+		OutputTokens:    output_tokens,
 	})
 
 	data, err := yaml.Marshal(chat)
@@ -110,6 +113,52 @@ func ContinueConversation(logFd *os.File) ([]LLMConversations, error) {
 
 	// n-1 to get the first user prompt for the conversation
 	return chat[lastConv-1:], nil
+}
+
+// Gemini created this function, along with tokenizeWord
+func EstimateTokens(text string) int32 {
+	var tokenCount int32
+	words := strings.Fields(text)
+
+	for _, word := range words {
+		tokenCount += tokenizeWord(word)
+	}
+
+	return tokenCount
+}
+
+func tokenizeWord(word string) int32 {
+	var tokens int32
+	var currentToken string
+
+	for _, char := range word {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) {
+			currentToken += string(char)
+		} else if unicode.IsPunct(char) {
+			if currentToken != "" {
+				tokens++
+				currentToken = ""
+			}
+			tokens++
+		} else if unicode.IsSpace(char) {
+			if currentToken != "" {
+				tokens++
+				currentToken = ""
+			}
+		} else {
+			if currentToken != "" {
+				tokens++
+				currentToken = ""
+			}
+			tokens++
+		}
+	}
+
+	if currentToken != "" {
+		tokens++
+	}
+
+	return tokens
 }
 
 func getClientKey(llm string) string {

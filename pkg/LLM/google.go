@@ -51,7 +51,7 @@ func (cs *Google) SimpleChat(args ClientArgs) error {
 	return nil
 }
 
-func (cs *Google) Chat(args ClientArgs) (string, error) {
+func (cs *Google) Chat(args ClientArgs) (ClientResponse, error) {
 	client := cs.Client
 	ctx := cs.Context
 
@@ -65,7 +65,10 @@ func (cs *Google) Chat(args ClientArgs) (string, error) {
 	// model.ResponseMIMEType = "application/json"
 
 	var resp_str string
+	var usage *genai.UsageMetadata
 	prompt := buildPrompt(args.Context, *args.Prompt)
+	myInputEstimate := EstimateTokens(prompt + *args.SystemPrompt)
+
 	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
 	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
 	for {
@@ -74,13 +77,23 @@ func (cs *Google) Chat(args ClientArgs) (string, error) {
 			break
 		}
 		if err != nil {
-			return "", err
+			return ClientResponse{}, err
 		}
 
 		r := fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
 		resp_str += r
 		wrapper.Write([]byte(r))
+
+		usage = resp.UsageMetadata
 	}
 
-	return resp_str, nil
+	// I believe the stats object will be usable even if the response is empty
+	r := ClientResponse{
+		Text:         resp_str,
+		InputTokens:  usage.PromptTokenCount,
+		OutputTokens: usage.CandidatesTokenCount,
+		MyEstInput:   myInputEstimate,
+	}
+
+	return r, nil
 }

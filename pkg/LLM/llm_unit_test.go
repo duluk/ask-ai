@@ -16,7 +16,7 @@ func TestLogChat(t *testing.T) {
 	defer os.Remove(tempFile.Name())
 	defer tempFile.Close()
 
-	err = LogChat(tempFile, "user", "Hello", "gpt-3.5-turbo", false)
+	err = LogChat(tempFile, "user", "Hello", "gpt-3.5-turbo", false, 0, 0)
 	if err != nil {
 		t.Errorf("LogChat failed: %v", err)
 	}

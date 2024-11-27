@@ -9,8 +9,6 @@ import (
 	"github.com/openai/openai-go"
 )
 
-// These fields need to have capital lettesr to be exported (ugh)
-
 // TODO: make this configurable
 const TermWidth = 80
 const TabWidth = 4
@@ -21,10 +19,18 @@ type LLMConversations struct {
 	Model           string `yaml:"model"`
 	Timestamp       string `yaml:"timestamp"`
 	NewConversation bool   `yaml:"new_conversation"`
+	InputTokens     int32  `yaml:"input_tokens"`
+	OutputTokens    int32  `yaml:"output_tokens"`
 }
 
+type ClientResponse struct {
+	Text         string
+	InputTokens  int32
+	OutputTokens int32
+	MyEstInput   int32 // May be used at some point
+}
 type Client interface {
-	Chat(args ClientArgs) (string, error)
+	Chat(args ClientArgs) (ClientResponse, error)
 }
 
 type Anthropic struct {

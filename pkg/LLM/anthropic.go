@@ -48,12 +48,14 @@ func NewAnthropic() *Anthropic {
 	return &Anthropic{APIKey: api_key, Client: client}
 }
 
-func (cs *Anthropic) Chat(args ClientArgs) (string, error) {
+func (cs *Anthropic) Chat(args ClientArgs) (ClientResponse, error) {
 	prompt := args.Prompt
 	client := cs.Client
 
 	msgCtx := convertToAnthropicMessages(args.Context)
 	msgCtx = append(msgCtx, anthropic.NewUserTextMessage(*prompt))
+
+	myInputEstimate := EstimateTokens(*args.Prompt + *args.SystemPrompt)
 
 	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
 	resp, err := client.CreateMessagesStream(
@@ -82,8 +84,16 @@ func (cs *Anthropic) Chat(args ClientArgs) (string, error) {
 		} else {
 			fmt.Printf("Messages stream error: %v\n", err)
 		}
-		return "", err
+		return ClientResponse{}, err
 	}
 
-	return resp.Content[0].GetText(), nil
+	// I believe the stats object will be usable even if the response is empty
+	stats := resp.Usage
+	r := ClientResponse{
+		Text:         resp.Content[0].GetText(),
+		InputTokens:  int32(stats.InputTokens),
+		OutputTokens: int32(stats.OutputTokens),
+		MyEstInput:   myInputEstimate,
+	}
+	return r, nil
 }
