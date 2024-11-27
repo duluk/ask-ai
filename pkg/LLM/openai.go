@@ -35,8 +35,6 @@ func (cs *OpenAI) Chat(args ClientArgs) (ClientResponse, error) {
 		}
 	}
 
-	fmt.Printf("msgCtx: %s\n", msgCtx)
-
 	const ChatModelGrokBeta openai.ChatModel = "grok-beta"
 	var model openai.ChatModel
 	switch *args.Model {
