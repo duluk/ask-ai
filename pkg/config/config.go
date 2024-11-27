@@ -25,7 +25,7 @@ type Options struct {
 	Temperature   float32
 }
 
-const version = "0.3.3"
+const version = "0.4.0"
 
 var (
 	commit = "Unknown"
