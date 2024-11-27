@@ -121,7 +121,15 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
 	}
-	LLM.LogChat(log, "User", *args.Prompt, "", continueChat)
+	LLM.LogChat(
+		log,
+		"User",
+		*args.Prompt,
+		"",
+		continueChat,
+		LLM.EstimateTokens(*args.Prompt),
+		0,
+	)
 
 	fmt.Println("Assistant: ")
 	resp, err := client.Chat(args)
@@ -136,8 +144,8 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 	// InsertConversation. As it stands, each function uses the current
 	// timestamp when the function is executed.
 
-	LLM.LogChat(log, "Assistant", resp, model, continueChat)
-	err = db.InsertConversation(*args.Prompt, resp, model, *args.Temperature)
+	LLM.LogChat(log, "Assistant", resp.Text, model, continueChat, resp.InputTokens, resp.OutputTokens)
+	err = db.InsertConversation(*args.Prompt, resp.Text, model, *args.Temperature)
 	if err != nil {
 		fmt.Println("error inserting conversation into database: ", err)
 	}
