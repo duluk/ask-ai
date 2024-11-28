@@ -10,9 +10,6 @@
 1. Manage stats in the conversation, such as tokens used, tokens received, etc.
 
 ## Version Sooner...
-1. When using the prompt (not passing in the prompt on the CLI), don't return
-   after the first answer but return to the prompt for more, continuing the
-   conversation.
 1. Add a TUI interface (using bubbletea?) so the output looks good
    * Markdown support would be nice
 1. Track conversations by ID in the DB. (or even the YML file) This would allow
