@@ -1,6 +1,5 @@
 # Makefile for the ask-ai project.
 
-# GOPATH ?= $(HOME)/go
 ifeq ($(GOPATH),)
     GOPATH := $(HOME)/go
     $(info GOPATH not set, using default: $(GOPATH))
@@ -69,4 +68,4 @@ install: all
 # files. This is important because if a file of the same name actually exists,
 # it may not be executed if the timestamp hasn't changed. That's not what we
 # want for these.
-.PHONY: all list check clean test fmt vet run install
+.PHONY: all build list check clean test fmt vet run install
