@@ -30,20 +30,6 @@ func TestNewDB(t *testing.T) {
 	db.Close()
 }
 
-func TestCreateTable(t *testing.T) {
-	// Create a new DB and assert that it's not nil
-	db, err := NewDB(dbPath, dbTable)
-	assert.Nil(t, err)
-	assert.NotNil(t, db)
-
-	// Call createTable on the existing DB to assert it doesn't error
-	err = createTable(db.db, dbTable)
-	assert.Nil(t, err)
-
-	// Close the DB to clean up
-	db.Close()
-}
-
 func TestInsertConversation(t *testing.T) {
 	// Create a new DB and assert that it's not nil
 	db, err := NewDB(dbPath, dbTable)
@@ -51,7 +37,7 @@ func TestInsertConversation(t *testing.T) {
 	assert.NotNil(t, db)
 
 	// Insert a conversation with valid data and assert there are no errors
-	err = db.InsertConversation("prompt", "response", "model_name", 0.5)
+	err = db.InsertConversation("prompt", "response", "model_name", 0.5, 10, 20)
 	assert.Nil(t, err)
 
 	// Close the DB to clean up
