@@ -52,7 +52,7 @@ func main() {
 	}
 
 	// If DB exists, it just opens it; otherwise, it creates it first
-	db, err := database.NewDB(opts.DBFileName, opts.DBTable)
+	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		os.Exit(1)
@@ -145,7 +145,7 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 	// timestamp when the function is executed.
 
 	LLM.LogChat(log, "Assistant", resp.Text, model, continueChat, resp.InputTokens, resp.OutputTokens)
-	err = db.InsertConversation(*args.Prompt, resp.Text, model, *args.Temperature)
+	err = db.InsertConversation(*args.Prompt, resp.Text, model, *args.Temperature, resp.InputTokens, resp.OutputTokens)
 	if err != nil {
 		fmt.Println("error inserting conversation into database: ", err)
 	}

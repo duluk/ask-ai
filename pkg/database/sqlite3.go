@@ -26,9 +26,9 @@ func NewDB(dbPath string, dbTable string) (*ChatDB, error) {
 		return nil, fmt.Errorf("%v", err)
 	}
 
-	err = createTable(db, dbTable)
+	_, err = db.Exec(DBSchema(dbTable))
 	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("error creating %s table: %v", dbTable, err)
 	}
 
 	sqlDB := ChatDB{}
@@ -37,36 +37,18 @@ func NewDB(dbPath string, dbTable string) (*ChatDB, error) {
 	return &sqlDB, nil
 }
 
-// TODO: when I add the ability to get the number of tokens used in the
-// response, store that
-func createTable(db *sql.DB, dbTable string) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS ` + dbTable + ` (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-			prompt TEXT NOT NULL,
-			response TEXT NOT NULL,
-			model_name TEXT NOT NULL,
-			temperature REAL NOT NULL
-		);
-	`)
-	if err != nil {
-		return fmt.Errorf("error creating %s table: %v", dbTable, err)
-	}
-
-	return nil
-}
-
 func (sqlDB *ChatDB) InsertConversation(
 	prompt,
 	response,
 	modelName string,
 	temperature float32,
+	inputTokens int32,
+	outputTokens int32,
 ) error {
 	_, err := sqlDB.db.Exec(`
-		INSERT INTO `+sqlDB.dbTable+` (prompt, response, model_name, temperature)
-		VALUES (?, ?, ?, ?);
-	`, prompt, response, modelName, temperature)
+		INSERT INTO `+sqlDB.dbTable+` (prompt, response, model_name, temperature, input_tokens, output_tokens)
+		VALUES (?, ?, ?, ?, ?, ?);
+	`, prompt, response, modelName, temperature, inputTokens, outputTokens)
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}

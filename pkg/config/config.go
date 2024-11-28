@@ -25,7 +25,8 @@ type Options struct {
 	Temperature   float32
 }
 
-const version = "0.4.0"
+const Version = "0.4.0"
+const SchemaVersion = 2
 
 var (
 	commit = "Unknown"
@@ -108,11 +109,11 @@ func Initialize() (*Options, error) {
 
 func handleVersionFlags() bool {
 	if viper.GetBool("version") {
-		fmt.Println("ask-ai version:", version)
+		fmt.Println("ask-ai version:", Version)
 		return true
 	}
 	if viper.GetBool("full-version") {
-		fmt.Printf("Version: %s\nCommit:  %s\nDate:    %s\n", version, commit, date)
+		fmt.Printf("Version: %s\nCommit:  %s\nDate:    %s\n", Version, commit, date)
 		return true
 	}
 	return false

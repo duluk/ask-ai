@@ -200,12 +200,12 @@ func HandleVersionFlags(t *testing.T) {
 		{
 			name:           "version flag",
 			args:           []string{"--version"},
-			expectedOutput: "ask-ai version: " + version + "\n",
+			expectedOutput: "ask-ai version: " + Version + "\n",
 		},
 		{
 			name: "full version flag",
 			args: []string{"--full-version"},
-			expectedOutput: "Version: " + version + "\n" +
+			expectedOutput: "Version: " + Version + "\n" +
 				"Commit:  " + commit + "\n" +
 				"Date:    " + date + "\n",
 		},
