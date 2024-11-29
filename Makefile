@@ -17,6 +17,7 @@ TST_DIRS  := $(shell go list ./... | grep -v cmd)
 
 CP := $(shell which cp)
 GO := $(shell which go)
+GOCYCLO := $(shell which gocyclo 2>/dev/null)
 
 CPFLAGS := -p
 GOFLAGS := -ldflags "-X 'github.com/duluk/ask-ai/pkg/config.commit=$(shell git rev-parse --short HEAD)' -X 'github.com/duluk/ask-ai/pkg/config.date=$(shell date -u '+%Y-%m-%d %H:%M:%S')'"
@@ -44,7 +45,14 @@ clean:
 # For verbose, run `make test VERBOSE=1` (or put VERBOSE=1 first); I'm not sure
 # how to pass `-v` from the CLI to this
 test: $(TST_FILES)
+	@echo "Running Go tests..."
 	$(GO) test $(TESTFLAGS) $(if $(VERBOSE),-v) $(TST_DIRS) || exit 1
+	@if [ -x "$(GOCYCLO)" ]; then \
+		echo -e "\nRunning cyclomatic complexity test..." ; \
+		$(GOCYCLO) --over 12 . || exit 0 ; \
+	fi
+
+
 
 check: fmt vet
 
