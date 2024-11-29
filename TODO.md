@@ -84,6 +84,11 @@ new responses decrease unless you implement strategies like summarizing past exc
 1. Maybe allow commands (/ commands?) in the stdin prompt so that the user
    could do something like switch the model 'on the fly' in the middle of a
    conversation.
+1. Add a --search option that sends the query to Google or DuckDuckGo, parses
+   the results and takes the top 2 or 3 links, fetches the content of those,
+   then sends that to the LLM to generate a response. This would be a way to
+   more current information.
+   - Or the option could be --web
 
 ## Structure Idea
 1. Should I create multiple individual commands that do something specific,
