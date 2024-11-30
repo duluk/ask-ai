@@ -38,13 +38,19 @@ func main() {
 
 	/* CONTEXT? LOAD IT */
 	var promptContext []LLM.LLMConversations
-	if opts.ContinueChat {
+	if opts.ConversationID != 0 {
+		// The user may provide `--continue` along with `--id`, but that's
+		// fine. The intent is to load the one with the provided id.
+		promptContext, err = LLM.LoadConversationFromLog(log_fd, opts.ConversationID)
+		if err != nil {
+			fmt.Println("Error loading conversation from log: ", err)
+		}
+	} else if opts.ContinueChat {
 		promptContext, err = LLM.ContinueConversation(log_fd)
 		if err != nil {
 			fmt.Println("Error reading log for continuing chat: ", err)
 		}
-	}
-	if opts.Context != 0 {
+	} else if opts.Context != 0 {
 		promptContext, err = LLM.LastNChats(log_fd, opts.Context)
 		if err != nil {
 			fmt.Println("Error loading chat context from log: ", err)
@@ -66,6 +72,13 @@ func main() {
 		MaxTokens:    &opts.MaxTokens,
 		Temperature:  &opts.Temperature,
 		Log:          log_fd,
+	}
+
+	if opts.ConversationID == 0 {
+		clientArgs.ConvID = LLM.FindLastConversationID(log_fd)
+		if !opts.ContinueChat {
+			(*clientArgs.ConvID)++
+		}
 	}
 
 	/* GET THE PROMPT */
@@ -129,6 +142,7 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 		continueChat,
 		LLM.EstimateTokens(*args.Prompt),
 		0,
+		*args.ConvID,
 	)
 
 	fmt.Println("Assistant: ")
@@ -144,8 +158,26 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 	// InsertConversation. As it stands, each function uses the current
 	// timestamp when the function is executed.
 
-	LLM.LogChat(log, "Assistant", resp.Text, model, continueChat, resp.InputTokens, resp.OutputTokens)
-	err = db.InsertConversation(*args.Prompt, resp.Text, model, *args.Temperature, resp.InputTokens, resp.OutputTokens)
+	LLM.LogChat(
+		log,
+		"Assistant",
+		resp.Text,
+		model,
+		continueChat,
+		resp.InputTokens,
+		resp.OutputTokens,
+		*args.ConvID,
+	)
+
+	err = db.InsertConversation(
+		*args.Prompt,
+		resp.Text,
+		model,
+		*args.Temperature,
+		resp.InputTokens,
+		resp.OutputTokens,
+		*args.ConvID,
+	)
 	if err != nil {
 		fmt.Println("error inserting conversation into database: ", err)
 	}

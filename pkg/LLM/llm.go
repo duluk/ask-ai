@@ -12,7 +12,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func LogChat(logFd *os.File, role string, content string, model string, continueChat bool, input_tokens, output_tokens int32) error {
+func LogChat(
+	logFd *os.File,
+	role string,
+	content string,
+	model string,
+	continueChat bool,
+	input_tokens,
+	output_tokens int32,
+	convID int,
+) error {
 	// TODO: is it necessary to load the file every time? I suppose it's not
 	// the worst since this is a run-once program. But if the log is very
 	// large, it seems inefficient to read it all in, append to it, then
@@ -34,6 +43,7 @@ func LogChat(logFd *os.File, role string, content string, model string, continue
 		NewConversation: !continueChat,
 		InputTokens:     input_tokens,
 		OutputTokens:    output_tokens,
+		ConvID:          convID,
 	})
 
 	data, err := yaml.Marshal(chat)
@@ -85,6 +95,8 @@ func LastNChats(log_fd *os.File, n int) ([]LLMConversations, error) {
 		return nil, err
 	}
 
+	// This is the number of turns, not the number of conversations (so User:
+	// prompt; Asssitant: response are 2 turns)
 	totalTurns := len(chat)
 	if n <= 0 || n >= totalTurns {
 		return nil, fmt.Errorf("Context value is invalid (either <= 0 or too large): %d", n)
@@ -115,7 +127,49 @@ func ContinueConversation(logFd *os.File) ([]LLMConversations, error) {
 	return chat[lastConv-1:], nil
 }
 
-// Gemini created this function, along with tokenizeWord
+func LoadConversationFromLog(logFd *os.File, convID int) ([]LLMConversations, error) {
+	chat, err := LoadChatLog(logFd)
+	if err != nil {
+		return nil, err
+	}
+
+	var convs []LLMConversations
+	for _, conv := range chat {
+		if conv.ConvID == convID {
+			convs = append(convs, conv)
+		}
+	}
+
+	if len(convs) == 0 {
+		return nil, fmt.Errorf("No conversation found with id: %d", convID)
+	}
+
+	return convs, nil
+}
+
+func FindLastConversationID(logFd *os.File) *int {
+	chat, err := LoadChatLog(logFd)
+	if err != nil {
+		return nil
+	}
+
+	if len(chat) == 0 {
+		return nil
+	}
+
+	lastID := 0
+	for _, conv := range chat {
+		if conv.ConvID > lastID {
+			lastID = conv.ConvID
+		}
+	}
+
+	return &lastID
+}
+
+// Gemini created this function, along with tokenizeWord. It's not perfect by
+// any means but it provided a decent estimate, compared to what the LLMs
+// returned for the same prompt.
 func EstimateTokens(text string) int32 {
 	var tokenCount int32
 	words := strings.Fields(text)

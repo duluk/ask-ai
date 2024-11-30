@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 
+	// "github.com/duluk/ask-ai/pkg/LLM"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -44,11 +45,12 @@ func (sqlDB *ChatDB) InsertConversation(
 	temperature float32,
 	inputTokens int32,
 	outputTokens int32,
+	convID int,
 ) error {
 	_, err := sqlDB.db.Exec(`
-		INSERT INTO `+sqlDB.dbTable+` (prompt, response, model_name, temperature, input_tokens, output_tokens)
-		VALUES (?, ?, ?, ?, ?, ?);
-	`, prompt, response, modelName, temperature, inputTokens, outputTokens)
+		INSERT INTO `+sqlDB.dbTable+` (prompt, response, model_name, temperature, input_tokens, output_tokens, conv_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?);
+	`, prompt, response, modelName, temperature, inputTokens, outputTokens, convID)
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
@@ -62,3 +64,34 @@ func (sqlDB *ChatDB) Close() {
 		log.Fatalf("error closing database: %v", err)
 	}
 }
+
+// TODO: the problem to be solved here is that the DB stores the conversations
+// slightly differently from the YML file. For the YML file, the prompt and the
+// response are two different entries, which is what LLMConversations
+// represents. However, in the DB, the prompt and the response are stored in
+// the same row. So, we need to figure out how to load the conversations from
+// the DB and return them as LLMConversations.
+// One options is to read the DB etnry and create two LLMConversations from it.
+
+// func (sqlDB *ChatDB) LoadConversation(convID int) ([]LLM.LLMConversations, error) {
+// 	rows, err := sqlDB.db.Query(`
+// 		SELECT prompt, response, model_name, temperature, input_tokens, output_tokens, conv_id
+// 		FROM `+sqlDB.dbTable+` WHERE conv_id = ?;
+// 	`, convID)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("%v", err)
+// 	}
+// 	defer rows.Close()
+//
+// 	var conversations []LLM.LLMConversations
+// 	for rows.Next() {
+// 		var conv LLM.LLMConversations
+// 		// err := rows.Scan(&conv.Content, &conv.Response, &conv.ModelName, &conv.Temperature, &conv.InputTokens, &conv.OutputTokens, &conv.ConvID)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("%v", err)
+// 		}
+// 		conversations = append(conversations, conv)
+// 	}
+//
+// 	return conversations, nil
+// }

@@ -12,21 +12,22 @@ import (
 )
 
 type Options struct {
-	Model         string
-	Context       int
-	ContextLength int
-	ContinueChat  bool
-	DumpConfig    bool
-	LogFileName   string
-	DBFileName    string
-	DBTable       string
-	SystemPrompt  string
-	MaxTokens     int
-	Temperature   float32
+	Model          string
+	Context        int
+	ContextLength  int
+	ContinueChat   bool
+	DumpConfig     bool
+	LogFileName    string
+	DBFileName     string
+	DBTable        string
+	SystemPrompt   string
+	MaxTokens      int
+	Temperature    float32
+	ConversationID int
 }
 
-const Version = "0.4.0"
-const SchemaVersion = 2
+const Version = "0.3.3"
+const SchemaVersion = 3
 
 var (
 	commit = "Unknown"
@@ -69,6 +70,7 @@ func Initialize() (*Options, error) {
 	pflag.BoolP("version", "v", false, "Print version and exit")
 	pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 	pflag.BoolP("dump-config", "", false, "Dump configuration and exit")
+	pflag.IntP("id", "i", 0, "ID of the conversation to continue")
 
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
@@ -93,17 +95,18 @@ func Initialize() (*Options, error) {
 
 	// Create and return options
 	return &Options{
-		Model:         pflag.Lookup("model").Value.String(),
-		Context:       viper.GetInt("context"),
-		ContextLength: viper.GetInt("model.context_length"),
-		ContinueChat:  viper.GetBool("continue"),
-		DumpConfig:    viper.GetBool("dump-config"),
-		LogFileName:   os.ExpandEnv(viper.GetString("log.file")),
-		DBFileName:    os.ExpandEnv(viper.GetString("database.file")),
-		DBTable:       viper.GetString("database.table"),
-		SystemPrompt:  viper.GetString("model.system_prompt"),
-		MaxTokens:     viper.GetInt("model.max_tokens"),
-		Temperature:   float32(viper.GetFloat64("model.temperature")),
+		Model:          pflag.Lookup("model").Value.String(),
+		Context:        viper.GetInt("context"),
+		ContextLength:  viper.GetInt("model.context_length"),
+		ContinueChat:   viper.GetBool("continue"),
+		DumpConfig:     viper.GetBool("dump-config"),
+		LogFileName:    os.ExpandEnv(viper.GetString("log.file")),
+		DBFileName:     os.ExpandEnv(viper.GetString("database.file")),
+		DBTable:        viper.GetString("database.table"),
+		SystemPrompt:   viper.GetString("model.system_prompt"),
+		MaxTokens:      viper.GetInt("model.max_tokens"),
+		Temperature:    float32(viper.GetFloat64("model.temperature")),
+		ConversationID: viper.GetInt("id"),
 	}, nil
 }
 
