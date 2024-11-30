@@ -1,12 +1,5 @@
 package database
 
-// ALTER TABLE conversations
-// ADD COLUMN new_column1 TEXT;
-// ALTER TABLE conversations
-// ADD COLUMN new_column2 INTEGER;
-//
-// PRAGMA user_version = 2;
-
 import (
 	"database/sql"
 	"strconv"
@@ -24,7 +17,8 @@ func DBSchema(dbTable string) string {
 		model_name TEXT NOT NULL,
 		temperature REAL NOT NULL,
 		input_tokens INTEGER,
-		output_tokens INTEGER
+		output_tokens INTEGER,
+		conv_id INTEGER
 	);
 	`
 }

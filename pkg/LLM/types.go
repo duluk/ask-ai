@@ -21,6 +21,7 @@ type LLMConversations struct {
 	NewConversation bool   `yaml:"new_conversation"`
 	InputTokens     int32  `yaml:"input_tokens"`
 	OutputTokens    int32  `yaml:"output_tokens"`
+	ConvID          int    `yaml:"conv_id"`
 }
 
 type ClientResponse struct {
@@ -57,4 +58,5 @@ type ClientArgs struct {
 	MaxTokens    *int
 	Temperature  *float32
 	Log          *os.File
+	ConvID       *int
 }
