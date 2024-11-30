@@ -1,6 +1,7 @@
 package LLM
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 )
 
 func TestLogChat(t *testing.T) {
+	const contChat = true
 	tempFile, err := os.CreateTemp("", "test_log_*.yaml")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
@@ -16,7 +18,7 @@ func TestLogChat(t *testing.T) {
 	defer os.Remove(tempFile.Name())
 	defer tempFile.Close()
 
-	err = LogChat(tempFile, "user", "Hello", "gpt-3.5-turbo", false, 0, 0)
+	err = LogChat(tempFile, "user", "Hello", "gpt-3.5-turbo", contChat, 112, 420, 3)
 	if err != nil {
 		t.Errorf("LogChat failed: %v", err)
 	}
@@ -30,12 +32,19 @@ func TestLogChat(t *testing.T) {
 		t.Errorf("Expected 1 conversation, got %d", len(conversations))
 	}
 
-	if conversations[0].Role != "user" || conversations[0].Content != "Hello" || conversations[0].Model != "gpt-3.5-turbo" {
+	if conversations[0].Role != "user" ||
+		conversations[0].Content != "Hello" ||
+		conversations[0].Model != "gpt-3.5-turbo" ||
+		conversations[0].NewConversation != !contChat ||
+		conversations[0].InputTokens != 112 ||
+		conversations[0].OutputTokens != 420 ||
+		conversations[0].ConvID != 3 {
 		t.Errorf("Conversation data mismatch")
 	}
 }
 
 func TestLoadChatLog(t *testing.T) {
+	const contChat = true
 	tempFile, err := os.CreateTemp("", "test_load_*.yaml")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
@@ -44,7 +53,16 @@ func TestLoadChatLog(t *testing.T) {
 	defer tempFile.Close()
 
 	testData := []LLMConversations{
-		{Role: "user", Content: "Hello", Model: "gpt-3.5-turbo", Timestamp: time.Now().Format(time.RFC3339), NewConversation: true},
+		{
+			Role:            "user",
+			Content:         "Hello",
+			Model:           "gpt-3.5-turbo",
+			Timestamp:       time.Now().Format(time.RFC3339),
+			NewConversation: !contChat,
+			InputTokens:     112,
+			OutputTokens:    420,
+			ConvID:          3,
+		},
 	}
 
 	yamlData, _ := yaml.Marshal(testData)
@@ -59,7 +77,13 @@ func TestLoadChatLog(t *testing.T) {
 		t.Errorf("Expected 1 conversation, got %d", len(conversations))
 	}
 
-	if conversations[0].Role != "user" || conversations[0].Content != "Hello" || conversations[0].Model != "gpt-3.5-turbo" {
+	if conversations[0].Role != "user" ||
+		conversations[0].Content != "Hello" ||
+		conversations[0].Model != "gpt-3.5-turbo" ||
+		conversations[0].NewConversation != !contChat ||
+		conversations[0].InputTokens != 112 ||
+		conversations[0].OutputTokens != 420 ||
+		conversations[0].ConvID != 3 {
 		t.Errorf("Conversation data mismatch")
 	}
 }
@@ -125,6 +149,166 @@ func TestContinueConversation(t *testing.T) {
 	if conversations[0].Content != "How are you?" || conversations[1].Content != "I'm doing well, thanks!" {
 		t.Errorf("Incorrect conversation continuation")
 	}
+}
+
+func TestLoadConversationFromLog(t *testing.T) {
+	tempFile, err := os.CreateTemp("", "testlog")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
+
+	testData := []LLMConversations{
+		{
+			Role:            "user",
+			Content:         "Hello",
+			Model:           "gpt-3.5-turbo",
+			Timestamp:       time.Now().Format(time.RFC3339),
+			NewConversation: false,
+			InputTokens:     112,
+			OutputTokens:    420,
+			ConvID:          1,
+		},
+		{
+			Role:            "user",
+			Content:         "Hi",
+			Model:           "gpt-3.5-turbo",
+			Timestamp:       time.Now().Format(time.RFC3339),
+			NewConversation: false,
+			InputTokens:     112,
+			OutputTokens:    420,
+			ConvID:          2,
+		},
+		{
+			Role:            "assistant",
+			Content:         "Hello here!",
+			Model:           "gpt-3.5-turbo",
+			Timestamp:       time.Now().Format(time.RFC3339),
+			NewConversation: false,
+			InputTokens:     112,
+			OutputTokens:    420,
+			ConvID:          1,
+		},
+	}
+
+	yamlData, _ := yaml.Marshal(testData)
+	tempFile.Write(yamlData)
+
+	if _, err := tempFile.Seek(0, 0); err != nil {
+		t.Fatalf("Failed to seek to beginning of file: %v", err)
+	}
+
+	tests := []struct {
+		name        string
+		convID      int
+		expectedLen int
+		expectError bool
+	}{
+		{"Existing conversation", 1, 2, false},
+		{"Non-existing conversation", 3, 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			convs, err := LoadConversationFromLog(tempFile, tt.convID)
+			fmt.Printf("convs: %v\n", convs)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+			}
+
+			if len(convs) != tt.expectedLen {
+				t.Errorf("Expected %d conversations, got %d", tt.expectedLen, len(convs))
+			}
+
+			for _, conv := range convs {
+				if conv.ConvID != tt.convID {
+					t.Errorf("Expected ConvID %d, got %d", tt.convID, conv.ConvID)
+				}
+			}
+		})
+	}
+
+	t.Run("Invalid file", func(t *testing.T) {
+		invalidFile, _ := os.CreateTemp("", "invalidlog")
+		defer os.Remove(invalidFile.Name())
+		defer invalidFile.Close()
+
+		_, err := LoadConversationFromLog(invalidFile, 1)
+		if err == nil {
+			t.Errorf("Expected error for invalid file, got nil")
+		}
+	})
+}
+
+func TestFindLastConversationID(t *testing.T) {
+	tmpfile, err := os.CreateTemp("", "testchatlog")
+	if err != nil {
+		t.Fatalf("Failed to create temporary file: %v", err)
+	}
+	defer os.Remove(tmpfile.Name())
+	defer tmpfile.Close()
+
+	testCases := []struct {
+		name     string
+		content  string
+		expected *int
+	}{
+		{
+			name:     "Empty log",
+			content:  "",
+			expected: nil,
+		},
+		{
+			name: "Single conversation",
+			content: `[
+			{"conv_id": 1, "Role": "user", "Content": "Hello"},
+            ]`,
+			expected: intPtr(1),
+		},
+		{
+			name: "Multiple conversations",
+			content: `[
+			{"conv_id": 1, "Role": "user", "Content": "Hello"},
+			{"conv_id": 3, "Role": "user", "Content": "Hi"},
+			{"conv_id": 2, "Role": "user", "Content": "Hi"}
+            ]`,
+			expected: intPtr(3),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := tmpfile.WriteString(tc.content); err != nil {
+				t.Fatalf("Failed to write to temporary file: %v", err)
+			}
+			tmpfile.Seek(0, 0) // Reset file pointer to beginning
+
+			result := FindLastConversationID(tmpfile)
+
+			if tc.expected == nil && result != nil {
+				t.Errorf("Expected nil, but got %d", *result)
+			} else if tc.expected != nil && result == nil {
+				t.Errorf("Expected %d, but got nil", *tc.expected)
+			} else if tc.expected != nil && result != nil && *tc.expected != *result {
+				t.Errorf("Expected %d, but got %d", *tc.expected, *result)
+			}
+
+			tmpfile.Truncate(0)
+			tmpfile.Seek(0, 0)
+		})
+	}
+}
+
+func intPtr(i int) *int {
+	return &i
 }
 
 func TestGetClientKey(t *testing.T) {
