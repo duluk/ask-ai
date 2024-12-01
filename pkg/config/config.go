@@ -29,7 +29,6 @@ type Options struct {
 }
 
 const Version = "0.3.3"
-const SchemaVersion = 3
 
 var (
 	commit = "Unknown"
@@ -49,7 +48,6 @@ func Initialize() (*Options, error) {
 		return nil, fmt.Errorf("error setting up config: %w", err)
 	}
 
-	// Set baseline defaults
 	viper.SetDefault("model.default", "claude")
 	viper.SetDefault("model.context_length", 2048)
 	viper.SetDefault("model.max_tokens", 512)
@@ -79,16 +77,16 @@ func Initialize() (*Options, error) {
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
 	viper.BindPFlag("continue", pflag.Lookup("continue"))
+	viper.BindPFlag("dump-config", pflag.Lookup("dump-config"))
+	viper.BindPFlag("id", pflag.Lookup("id"))
 	viper.BindPFlag("search", pflag.Lookup("search"))
 	viper.BindPFlag("show", pflag.Lookup("show"))
 	viper.BindPFlag("log.file", pflag.Lookup("log"))
 	viper.BindPFlag("database.file", pflag.Lookup("database"))
-	viper.BindPFlag("dump-config", pflag.Lookup("dump-config"))
 	viper.BindPFlag("model.system_prompt", pflag.Lookup("system-prompt"))
 	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
 	viper.BindPFlag("model.context_length", pflag.Lookup("context-length"))
 	viper.BindPFlag("model.temperature", pflag.Lookup("temperature"))
-	viper.BindPFlag("id", pflag.Lookup("id"))
 
 	viper.BindPFlag("version", pflag.Lookup("version"))
 	viper.BindPFlag("full-version", pflag.Lookup("full-version"))

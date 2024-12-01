@@ -3,9 +3,9 @@ package database
 import (
 	"database/sql"
 	"strconv"
-
-	"github.com/duluk/ask-ai/pkg/config"
 )
+
+const SchemaVersion = 3
 
 func DBSchema(dbTable string) string {
 	return `
@@ -99,18 +99,25 @@ func setSchemaVersion(db *sql.DB, schemaVersion int) error {
 func InitializeDB(dbPath string, dbTable string) (*ChatDB, error) {
 	// DB created only if it doesn't exist
 	chatDB, err := NewDB(dbPath, dbTable)
+	if err != nil {
+		return chatDB, err
+	}
 
 	var currentVersion int
 	err = chatDB.db.QueryRow("PRAGMA user_version").Scan(&currentVersion)
+	if err != nil {
+		return chatDB, err
+	}
+
 	if currentVersion == 0 {
 		// This should mean it's the first time we've created this database,
 		// which means it should be using the latest schema, which should mean
 		// the latest schema version. So just set that.
-		setSchemaVersion(chatDB.db, config.SchemaVersion)
-	} else if currentVersion < config.SchemaVersion {
+		setSchemaVersion(chatDB.db, SchemaVersion)
+	} else if currentVersion < SchemaVersion {
 		// If the current schema exists but is less than the latest schema,
 		// apply each schema that was missed.
-		for i := currentVersion + 1; i <= config.SchemaVersion; i++ {
+		for i := currentVersion + 1; i <= SchemaVersion; i++ {
 			err = applySchema(chatDB.db, dbTable, i)
 			if err != nil {
 				return chatDB, err
