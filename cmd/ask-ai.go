@@ -36,12 +36,21 @@ func main() {
 	}
 	defer log_fd.Close()
 
+	// If DB exists, it just opens it; otherwise, it creates it first
+	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
+	if err != nil {
+		fmt.Println("Error opening database: ", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
 	/* CONTEXT? LOAD IT */
 	var promptContext []LLM.LLMConversations
 	if opts.ConversationID != 0 {
 		// The user may provide `--continue` along with `--id`, but that's
 		// fine. The intent is to load the one with the provided id.
-		promptContext, err = LLM.LoadConversationFromLog(log_fd, opts.ConversationID)
+		// promptContext, err = LLM.LoadConversationFromLog(log_fd, opts.ConversationID)
+		promptContext, err = db.LoadConversationFromDB(opts.ConversationID)
 		if err != nil {
 			fmt.Println("Error loading conversation from log: ", err)
 		}
@@ -56,14 +65,6 @@ func main() {
 			fmt.Println("Error loading chat context from log: ", err)
 		}
 	}
-
-	// If DB exists, it just opens it; otherwise, it creates it first
-	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
-	if err != nil {
-		fmt.Println("Error opening database: ", err)
-		os.Exit(1)
-	}
-	defer db.Close()
 
 	clientArgs := LLM.ClientArgs{
 		Model:        &opts.Model,
@@ -151,7 +152,7 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
 	}
-	fmt.Printf("\n\n-%s\n", model)
+	fmt.Printf("\n\n-%s (conv. id: %d)\n", model, *args.ConvID)
 
 	// If we want the timestamp in the log and in the database to match
 	// exactly, we can set it here and pass it in to LogChat and

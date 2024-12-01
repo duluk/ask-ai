@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	// "github.com/duluk/ask-ai/pkg/LLM"
+	"github.com/duluk/ask-ai/pkg/LLM"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -65,33 +65,84 @@ func (sqlDB *ChatDB) Close() {
 	}
 }
 
-// TODO: the problem to be solved here is that the DB stores the conversations
-// slightly differently from the YML file. For the YML file, the prompt and the
-// response are two different entries, which is what LLMConversations
-// represents. However, in the DB, the prompt and the response are stored in
-// the same row. So, we need to figure out how to load the conversations from
-// the DB and return them as LLMConversations.
-// One options is to read the DB etnry and create two LLMConversations from it.
+// Return LLMConversations for a given conv_id. This will require generating
+// the LLMConversations from a single row in the DB as the LLMConversations
+// structure has one etnry for the user role with prompt and another with the
+// assistant role and response.
+func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations, error) {
+	rows, err := sqlDB.db.Query(`
+		SELECT prompt, response, model_name, timestamp, temperature, input_tokens, output_tokens, conv_id
+		FROM `+sqlDB.dbTable+` WHERE conv_id = ?;
+	`, convID)
+	if err != nil {
+		return nil, fmt.Errorf("%v", err)
+	}
+	defer rows.Close()
 
-// func (sqlDB *ChatDB) LoadConversation(convID int) ([]LLM.LLMConversations, error) {
-// 	rows, err := sqlDB.db.Query(`
-// 		SELECT prompt, response, model_name, temperature, input_tokens, output_tokens, conv_id
-// 		FROM `+sqlDB.dbTable+` WHERE conv_id = ?;
-// 	`, convID)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("%v", err)
-// 	}
-// 	defer rows.Close()
-//
-// 	var conversations []LLM.LLMConversations
-// 	for rows.Next() {
-// 		var conv LLM.LLMConversations
-// 		// err := rows.Scan(&conv.Content, &conv.Response, &conv.ModelName, &conv.Temperature, &conv.InputTokens, &conv.OutputTokens, &conv.ConvID)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("%v", err)
-// 		}
-// 		conversations = append(conversations, conv)
-// 	}
-//
-// 	return conversations, nil
-// }
+	var row struct {
+		prompt       string
+		response     string
+		modelName    string
+		timestamp    string
+		temperature  float32
+		inputTokens  int32
+		outputTokens int32
+		convID       int
+	}
+	var conversations []LLM.LLMConversations
+	for rows.Next() {
+		err := rows.Scan(&row.prompt, &row.response, &row.modelName, &row.timestamp, &row.temperature, &row.inputTokens, &row.outputTokens, &row.convID)
+		if err != nil {
+			return nil, fmt.Errorf("%v", err)
+		}
+
+		userTurn := LLM.LLMConversations{
+			Role:         "user",
+			Content:      row.prompt,
+			Model:        row.modelName,
+			Timestamp:    row.timestamp,
+			InputTokens:  row.inputTokens,
+			OutputTokens: 0,
+			ConvID:       row.convID,
+		}
+		conversations = append(conversations, userTurn)
+
+		assistantTurn := LLM.LLMConversations{
+			Role:         "assistant",
+			Content:      row.response,
+			Model:        row.modelName,
+			Timestamp:    row.timestamp,
+			InputTokens:  row.inputTokens,
+			OutputTokens: row.outputTokens,
+			ConvID:       row.convID,
+		}
+		conversations = append(conversations, assistantTurn)
+	}
+
+	return conversations, nil
+}
+
+// TODO: probably want a different return structure, so that the ID and
+// response at the minimum can be returned. But may want prompt too. May want
+// everything.
+func (sqlDB *ChatDB) SearchResponse(keyword string) ([]string, error) {
+	rows, err := sqlDB.db.Query(`
+		SELECT response FROM `+sqlDB.dbTable+` WHERE response LIKE ?;
+	`, "%"+keyword+"%")
+	if err != nil {
+		return nil, fmt.Errorf("%v", err)
+	}
+	defer rows.Close()
+
+	var responses []string
+	for rows.Next() {
+		var response string
+		err := rows.Scan(&response)
+		if err != nil {
+			return nil, fmt.Errorf("%v", err)
+		}
+		responses = append(responses, response)
+	}
+
+	return responses, nil
+}
