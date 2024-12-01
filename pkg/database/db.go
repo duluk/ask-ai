@@ -55,6 +55,7 @@ func SchemaQueryV3(dbTable string) string {
 	`
 }
 
+// There's got to be a better way to do this
 func getSchemaSQL(schemaVersion int, dbTable string) string {
 	switch schemaVersion {
 	case 1:

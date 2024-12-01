@@ -75,7 +75,6 @@ func (lw *LineWrapper) Write(data []byte) (n int, err error) {
 	}
 
 	lw.writer.Write(buffer.Bytes())
-	// fmt.Print(buffer.String())
 
 	return len(data), nil
 }

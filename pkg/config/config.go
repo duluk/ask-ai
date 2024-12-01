@@ -82,6 +82,7 @@ func Initialize() (*Options, error) {
 	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
 	viper.BindPFlag("model.context_length", pflag.Lookup("context-length"))
 	viper.BindPFlag("model.temperature", pflag.Lookup("temperature"))
+	viper.BindPFlag("id", pflag.Lookup("id"))
 
 	viper.BindPFlag("version", pflag.Lookup("version"))
 	viper.BindPFlag("full-version", pflag.Lookup("full-version"))
@@ -145,7 +146,7 @@ func expandHomePath(path string) string {
 	if strings.HasPrefix(path, "~") {
 		currentUser, err := user.Current()
 		if err != nil {
-			// I'm always trying to sneak a goto in just to trigger
+			// I'm always trying to sneak a goto in just to trigger :)
 			goto oopsies
 		}
 		return filepath.Join(currentUser.HomeDir, path[1:])

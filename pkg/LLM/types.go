@@ -30,6 +30,7 @@ type ClientResponse struct {
 	OutputTokens int32
 	MyEstInput   int32 // May be used at some point
 }
+
 type Client interface {
 	Chat(args ClientArgs) (ClientResponse, error)
 }

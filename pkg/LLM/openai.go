@@ -92,7 +92,6 @@ func (cs *OpenAI) Chat(args ClientArgs) (ClientResponse, error) {
 				return ClientResponse{}, err
 			}
 			resp += data
-			// fmt.Printf(data)
 		}
 		usage = &evt.Usage
 	}
