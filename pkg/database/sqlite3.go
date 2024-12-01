@@ -96,7 +96,7 @@ func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations,
 			return nil, fmt.Errorf("%v", err)
 		}
 
-		userConv := LLM.LLMConversations{
+		userTurn := LLM.LLMConversations{
 			Role:         "user",
 			Content:      row.prompt,
 			Model:        row.modelName,
@@ -105,9 +105,9 @@ func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations,
 			OutputTokens: 0,
 			ConvID:       row.convID,
 		}
-		conversations = append(conversations, userConv)
+		conversations = append(conversations, userTurn)
 
-		assistantConv := LLM.LLMConversations{
+		assistantTurn := LLM.LLMConversations{
 			Role:         "assistant",
 			Content:      row.response,
 			Model:        row.modelName,
@@ -116,7 +116,7 @@ func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations,
 			OutputTokens: row.outputTokens,
 			ConvID:       row.convID,
 		}
-		conversations = append(conversations, assistantConv)
+		conversations = append(conversations, assistantTurn)
 	}
 
 	return conversations, nil
