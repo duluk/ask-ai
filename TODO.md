@@ -7,21 +7,10 @@
    the Model field for that company's API? The flag would need to know which
    API will be used - which company's models to list. (it should default to the
    specified model, which may be the default)
-1. Manage stats in the conversation, such as tokens used, tokens received, etc.
 
 ## Version Sooner...
 1. Add a TUI interface (using bubbletea?) so the output looks good
    * Markdown support would be nice
-1. Track conversations by ID in the DB. (or even the YML file) This would allow
-   different conversations to be used for continuation later. This would mean
-   another flag to list-conversations, with ID. This would mean having the LLM
-   (or some library) summarize the conversation for the one-line summary output.
-   - Print the ID of the current conversation/chat response at the bottom of
-   the response, providing the `--id` option to continue from that one. There
-   should probably be a chain of ids though, connecting the conversations.
-   Either through the DB or the YML log file, or both.
-   - But at minimum, it would be nice to see a conversation with its ID and
-   then use `--id` to continue from that one.
 1. Add a --list-conversations flag to list all the conversations available.
 1. Assuming the following is remotely correct:
 ```
@@ -57,10 +46,6 @@ new responses decrease unless you implement strategies like summarizing past exc
   to gather stats from the models' response, I can use the real number of
   tokens used in the context and estimate just the prompt.
 
-  This is a real issue because my reponses are getting cut off. I believe it's
-  because the context (multi-turn conversation) is consuming most of the tokens
-  so there aren't that many left, when max_tokens is 'small', like 1024.
-
   Another option, or additional, is the note below about smarter context
   management, summarizing context as is reasonable (eg not code). That will
   also reduce the context size. I need to see how other tools handle this.
@@ -88,8 +73,14 @@ new responses decrease unless you implement strategies like summarizing past exc
    the results and takes the top 2 or 3 links, fetches the content of those,
    then sends that to the LLM to generate a response. This would be a way to
    more current information.
-   - Or the option could be --web
+   - Or the option could be --web, with --search being for searching the DB
 
+## Other Support Apps
+1. Add an ask-ai-db app (or do something like sub-commnds with ask-ai) that
+   allows the user to search the database of conversations. This could be
+   useful for finding a conversation that was had before, or for finding
+   conversations that are similar to the one the user is having now.
+   - When the TUI is added, this could be a pane in the TUI
 ## Structure Idea
 1. Should I create multiple individual commands that do something specific,
    like ai-query and ai-review and ai-compare and ai-cmd (etc) so that the
