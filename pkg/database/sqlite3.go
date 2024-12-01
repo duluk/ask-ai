@@ -125,24 +125,62 @@ func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations,
 // TODO: probably want a different return structure, so that the ID and
 // response at the minimum can be returned. But may want prompt too. May want
 // everything.
-func (sqlDB *ChatDB) SearchResponse(keyword string) ([]string, error) {
+func (sqlDB *ChatDB) SearchForConversation(keyword string) ([]int, error) {
 	rows, err := sqlDB.db.Query(`
-		SELECT response FROM `+sqlDB.dbTable+` WHERE response LIKE ?;
+		SELECT conv_id FROM `+sqlDB.dbTable+` WHERE response LIKE ?;
 	`, "%"+keyword+"%")
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
 	defer rows.Close()
 
-	var responses []string
+	var responses []int
 	for rows.Next() {
-		var response string
+		var response *int
 		err := rows.Scan(&response)
 		if err != nil {
 			return nil, fmt.Errorf("%v", err)
 		}
-		responses = append(responses, response)
+		// If response happens to be NULL (conv_id isn't set), it's fine to
+		// just skip it
+		if response != nil {
+			responses = append(responses, *response)
+		}
 	}
 
 	return responses, nil
+}
+
+func (sqlDB *ChatDB) ShowConversation(convID int) {
+	rows, err := sqlDB.db.Query(`
+		SELECT prompt, response, model_name, temperature, input_tokens, output_tokens, conv_id
+		FROM `+sqlDB.dbTable+` WHERE conv_id = ?;
+	`, convID)
+	if err != nil {
+		log.Fatalf("error showing conversation: %v", err)
+	}
+	defer rows.Close()
+
+	var row struct {
+		prompt       string
+		response     string
+		modelName    string
+		temperature  float32
+		inputTokens  int32
+		outputTokens int32
+		convID       int
+	}
+	for rows.Next() {
+		err := rows.Scan(&row.prompt, &row.response, &row.modelName, &row.temperature, &row.inputTokens, &row.outputTokens, &row.convID)
+		if err != nil {
+			log.Fatalf("error showing conversation: %v", err)
+		}
+		fmt.Printf("Prompt: %s\n", row.prompt)
+		fmt.Printf("Response: %s\n", row.response)
+		fmt.Printf("Model: %s\n", row.modelName)
+		fmt.Printf("Temperature: %f\n", row.temperature)
+		fmt.Printf("Input tokens: %d\n", row.inputTokens)
+		fmt.Printf("Output tokens: %d\n", row.outputTokens)
+		fmt.Printf("Conversation ID: %d\n", row.convID)
+	}
 }

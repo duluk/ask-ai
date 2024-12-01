@@ -9,6 +9,8 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/duluk/ask-ai/pkg/database"
 )
 
 type Options struct {
@@ -71,10 +73,12 @@ func Initialize() (*Options, error) {
 	pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 	pflag.BoolP("dump-config", "", false, "Dump configuration and exit")
 	pflag.IntP("id", "i", 0, "ID of the conversation to continue")
+	pflag.IntP("show", "", 0, "Show conversation with ID")
 
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
 	viper.BindPFlag("continue", pflag.Lookup("continue"))
+	viper.BindPFlag("show", pflag.Lookup("show"))
 	viper.BindPFlag("log.file", pflag.Lookup("log"))
 	viper.BindPFlag("database.file", pflag.Lookup("database"))
 	viper.BindPFlag("dump-config", pflag.Lookup("dump-config"))
@@ -94,6 +98,10 @@ func Initialize() (*Options, error) {
 		os.Exit(0)
 	}
 
+	if viper.GetInt("show") != 0 {
+		showConversation(viper.GetInt("show"))
+	}
+
 	// Create and return options
 	return &Options{
 		Model:          pflag.Lookup("model").Value.String(),
@@ -109,6 +117,27 @@ func Initialize() (*Options, error) {
 		Temperature:    float32(viper.GetFloat64("model.temperature")),
 		ConversationID: viper.GetInt("id"),
 	}, nil
+}
+
+func showConversation(convID int) {
+	if viper.GetString("database.file") == "" {
+		fmt.Println("Database file not set")
+		os.Exit(1)
+	}
+	if viper.GetString("database.table") == "" {
+		fmt.Println("Database table not set")
+		os.Exit(1)
+	}
+
+	db, err := database.InitializeDB(os.ExpandEnv(viper.GetString("database.file")), viper.GetString("database.table"))
+	if err != nil {
+		fmt.Printf("Error opening database: %s", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	db.ShowConversation(viper.GetInt("show"))
+	os.Exit(0)
 }
 
 func handleVersionFlags() bool {
