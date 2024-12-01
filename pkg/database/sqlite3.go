@@ -79,18 +79,18 @@ func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations,
 	}
 	defer rows.Close()
 
+	var row struct {
+		prompt       string
+		response     string
+		modelName    string
+		timestamp    string
+		temperature  float32
+		inputTokens  int32
+		outputTokens int32
+		convID       int
+	}
 	var conversations []LLM.LLMConversations
 	for rows.Next() {
-		var row struct {
-			prompt       string
-			response     string
-			modelName    string
-			timestamp    string
-			temperature  float32
-			inputTokens  int32
-			outputTokens int32
-			convID       int
-		}
 		err := rows.Scan(&row.prompt, &row.response, &row.modelName, &row.timestamp, &row.temperature, &row.inputTokens, &row.outputTokens, &row.convID)
 		if err != nil {
 			return nil, fmt.Errorf("%v", err)
