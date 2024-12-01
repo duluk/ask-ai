@@ -66,18 +66,20 @@ func Initialize() (*Options, error) {
 	pflag.BoolP("continue", "c", false, "Continue previous conversation")
 	pflag.StringP("log", "L", viper.GetString("log.file"), "Chat log file")
 	pflag.StringP("database", "d", viper.GetString("database.file"), "Database file")
-	pflag.StringP("system-prompt", "s", viper.GetString("model.system_prompt"), "System prompt for LLM")
+	pflag.StringP("system-prompt", "S", viper.GetString("model.system_prompt"), "System prompt for LLM")
 	pflag.IntP("max-tokens", "t", viper.GetInt("model.max_tokens"), "Maximum tokens to generate")
 	pflag.Float32P("temperature", "T", float32(viper.GetFloat64("model.temperature")), "Temperature for generation")
 	pflag.BoolP("version", "v", false, "Print version and exit")
 	pflag.BoolP("full-version", "V", false, "Print full version information and exit")
 	pflag.BoolP("dump-config", "", false, "Dump configuration and exit")
 	pflag.IntP("id", "i", 0, "ID of the conversation to continue")
+	pflag.StringP("search", "s", "", "Search for a conversation")
 	pflag.IntP("show", "", 0, "Show conversation with ID")
 
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
 	viper.BindPFlag("continue", pflag.Lookup("continue"))
+	viper.BindPFlag("search", pflag.Lookup("search"))
 	viper.BindPFlag("show", pflag.Lookup("show"))
 	viper.BindPFlag("log.file", pflag.Lookup("log"))
 	viper.BindPFlag("database.file", pflag.Lookup("database"))
@@ -96,6 +98,10 @@ func Initialize() (*Options, error) {
 	// Handle version flags and bail if necessary
 	if handleVersionFlags() {
 		os.Exit(0)
+	}
+
+	if viper.GetString("search") != "" {
+		searchForConversation(viper.GetString("search"))
 	}
 
 	if viper.GetInt("show") != 0 {
@@ -117,6 +123,37 @@ func Initialize() (*Options, error) {
 		Temperature:    float32(viper.GetFloat64("model.temperature")),
 		ConversationID: viper.GetInt("id"),
 	}, nil
+}
+
+// Maybe this shouldn't be in config...
+func searchForConversation(search string) {
+	if viper.GetString("database.file") == "" {
+		fmt.Println("Database file not set")
+		os.Exit(1)
+	}
+	if viper.GetString("database.table") == "" {
+		fmt.Println("Database table not set")
+		os.Exit(1)
+	}
+
+	db, err := database.InitializeDB(os.ExpandEnv(viper.GetString("database.file")), viper.GetString("database.table"))
+	if err != nil {
+		fmt.Printf("Error opening database: %s", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	ids, err := db.SearchForConversation(search)
+	if err != nil {
+		fmt.Printf("Error searching for conversation: %s", err)
+	}
+
+	fmt.Printf("Found %d conversations: ", len(ids))
+	for _, id := range ids {
+		fmt.Printf("%d, ", id)
+	}
+
+	os.Exit(0)
 }
 
 func showConversation(convID int) {

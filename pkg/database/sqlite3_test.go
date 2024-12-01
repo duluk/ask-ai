@@ -86,6 +86,30 @@ func TestLoadConversations(t *testing.T) {
 	RemoveDB()
 }
 
+func TestSearchForConversation(t *testing.T) {
+	db, err := NewDB(dbPath, dbTable)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	err = db.InsertConversation("prompt", "response", "model_name", 0.5, 10, 20, 1)
+	assert.Nil(t, err)
+	err = db.InsertConversation("prompt2", "response2", "model_name2", 0.5, 10, 20, 2)
+	assert.Nil(t, err)
+
+	ids, err := db.SearchForConversation("response")
+	assert.Nil(t, err)
+	assert.Len(t, ids, 2)
+	assert.Equal(t, 1, ids[0])
+
+	ids, err = db.SearchForConversation("marklar")
+	assert.Nil(t, err)
+	assert.Len(t, ids, 0)
+	// assert.Equal(t, 1, ids[0])
+
+	db.Close()
+	RemoveDB()
+}
+
 func RemoveDB() {
 	os.Remove(dbPath)
 }
