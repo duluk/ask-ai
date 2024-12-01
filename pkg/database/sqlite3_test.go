@@ -28,7 +28,6 @@ func TestNewDB(t *testing.T) {
 }
 
 func TestInsertConversation(t *testing.T) {
-	RemoveDB()
 	db, err := NewDB(dbPath, dbTable)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -37,6 +36,7 @@ func TestInsertConversation(t *testing.T) {
 	assert.Nil(t, err)
 
 	db.Close()
+	RemoveDB()
 }
 
 func TestClose(t *testing.T) {
@@ -45,14 +45,10 @@ func TestClose(t *testing.T) {
 	assert.NotNil(t, db)
 
 	db.Close()
-}
-
-func RemoveDB() {
-	os.Remove(dbPath)
+	RemoveDB()
 }
 
 func TestInsertConversationWithError(t *testing.T) {
-	RemoveDB()
 	db, err := NewDB(dbPath, dbTable)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -67,6 +63,7 @@ func TestInsertConversationWithError(t *testing.T) {
 	// assert.NotNil(t, err)
 
 	db.Close()
+	RemoveDB()
 }
 
 func TestLoadConversations(t *testing.T) {
@@ -86,4 +83,9 @@ func TestLoadConversations(t *testing.T) {
 	assert.Len(t, conversations, 2)
 
 	db.Close()
+	RemoveDB()
+}
+
+func RemoveDB() {
+	os.Remove(dbPath)
 }
