@@ -29,7 +29,6 @@ type Options struct {
 }
 
 const Version = "0.3.3"
-const SchemaVersion = 3
 
 var (
 	commit = "Unknown"
