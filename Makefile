@@ -9,8 +9,8 @@ BINARY_DIR := bin
 INSTALL_DIR := $(GOPATH)/bin
 MAIN_BINARY := ask-ai
 
-CMD_FILES := $(wildcard cmd/*.go)
-BIN_FILES := $(patsubst cmd/%.go,%,$(CMD_FILES))
+CMD_FILES := $(wildcard cmd/**/*.go)
+BIN_FILES := $(patsubst cmd/%/main.go,%,$(CMD_FILES))
 PKG_FILES := $(wildcard pkg/**/*.go)
 TST_FILES := $(wildcard pkg/**/*_test.go)
 TST_DIRS  := $(shell go list ./... | grep -v cmd)
@@ -29,7 +29,7 @@ all: check build
 
 build: $(addprefix $(BINARY_DIR)/,$(BIN_FILES))
 
-$(BINARY_DIR)/%: cmd/%.go $(PKG_FILES)
+$(BINARY_DIR)/%: cmd/%/main.go $(PKG_FILES)
 	$(GO) build $(GOFLAGS) -o $@ $<
 
 list:
