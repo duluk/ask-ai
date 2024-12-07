@@ -75,11 +75,14 @@ func main() {
 		Log:          log_fd,
 	}
 
+	// Make sure we are setting the correct conversation id when not provided
 	if opts.ConversationID == 0 {
 		clientArgs.ConvID = LLM.FindLastConversationID(log_fd)
 		if !opts.ContinueChat {
 			(*clientArgs.ConvID)++
 		}
+	} else {
+		clientArgs.ConvID = &opts.ConversationID
 	}
 
 	/* GET THE PROMPT */
