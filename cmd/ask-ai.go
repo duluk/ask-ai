@@ -159,7 +159,7 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
 	}
-	fmt.Printf("\n\n-%s (conv. id: %d)\n", model, *args.ConvID)
+	fmt.Printf("\n\n-%s (convID: %d)\n", model, *args.ConvID)
 
 	// If we want the timestamp in the log and in the database to match
 	// exactly, we can set it here and pass it in to LogChat and
