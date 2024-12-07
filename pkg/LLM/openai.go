@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/duluk/ask-ai/pkg/linewrap"
 
@@ -27,10 +28,11 @@ func (cs *OpenAI) Chat(args ClientArgs) (ClientResponse, error) {
 	var msgCtx string
 
 	for _, msg := range args.Context {
+		msg.Role = strings.ToLower(msg.Role)
 		switch msg.Role {
-		case "User":
+		case "user":
 			msgCtx += "User: " + msg.Content + "\n"
-		case "Assistant":
+		case "assistant":
 			msgCtx += "Assistant: " + msg.Content + "\n"
 		}
 	}
