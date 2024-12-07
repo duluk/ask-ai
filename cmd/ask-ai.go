@@ -47,9 +47,10 @@ func main() {
 	/* CONTEXT? LOAD IT */
 	var promptContext []LLM.LLMConversations
 	if opts.ConversationID != 0 {
-		// The user may provide `--continue` along with `--id`, but that's
-		// fine. The intent is to load the one with the provided id.
-		// promptContext, err = LLM.LoadConversationFromLog(log_fd, opts.ConversationID)
+		// The user may provide `--continue` along with `--id`, but that's fine
+		// (and sensible). The intent is to load the one with the provided id.
+		// promptContext, err = LLM.LoadConversationFromLog(log_fd,
+		// opts.ConversationID)
 		promptContext, err = db.LoadConversationFromDB(opts.ConversationID)
 		if err != nil {
 			fmt.Println("Error loading conversation from log: ", err)
@@ -113,6 +114,9 @@ func main() {
 			if err != nil {
 				fmt.Println("Error reading log for continuing chat: ", err)
 			}
+			// TODO: promptContext will be nill if err != nil above. That's
+			// probably what we want. Would write a test but not sure how to
+			// test the LLM functions without using tokens.
 			clientArgs.Context = promptContext
 		}
 	}
