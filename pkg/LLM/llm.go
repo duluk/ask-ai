@@ -28,10 +28,14 @@ func LogChat(
 	// re-write it. (only plus is that when changing the YML structure, it
 	// automarically re-writes the entire log and applies the new tags, though
 	// they may be empty)
+	// start := time.Now()
 	chat, err := LoadChatLog(logFd)
 	if err != nil {
 		return err
 	}
+	// end := time.Now()
+	// fmt.Println("LoadChatLog took: ", end.Sub(start))
+	// fmt.Printf("LogChat, content: %s\n", content)
 
 	timestamp := time.Now().Format(time.RFC3339)
 
