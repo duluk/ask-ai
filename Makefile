@@ -40,7 +40,6 @@ list:
 
 clean:
 	rm -rf $(BINARY_DIR)/* coverage.out
-	# rm -f $(addprefix $(BINARY_DIR)/,$(BIN_FILES)) coverage.out
 
 # For verbose, run `make test VERBOSE=1` (or put VERBOSE=1 first); I'm not sure
 # how to pass `-v` from the CLI to this
@@ -54,7 +53,7 @@ test: $(TST_FILES)
 
 
 
-check: fmt vet
+check: vet
 
 fmt: $(CMD_FILES)
 	$(GO) fmt ./...
