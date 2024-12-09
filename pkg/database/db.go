@@ -8,8 +8,7 @@ import (
 const SchemaVersion = 3
 
 func DBSchema(dbTable string) string {
-	return `
-	CREATE TABLE IF NOT EXISTS ` + dbTable + ` (
+	return "CREATE TABLE IF NOT EXISTS " + dbTable + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 		prompt TEXT NOT NULL,
@@ -24,8 +23,7 @@ func DBSchema(dbTable string) string {
 }
 
 func SchemaQueryV1(dbTable string) string {
-	return `
-	CREATE TABLE IF NOT EXISTS ` + dbTable + ` (
+	return "CREATE TABLE IF NOT EXISTS " + dbTable + ` (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 		prompt TEXT NOT NULL,
