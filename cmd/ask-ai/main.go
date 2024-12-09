@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -27,6 +28,12 @@ func main() {
 
 	if opts.DumpConfig {
 		config.DumpConfig(opts)
+	}
+
+	err = os.MkdirAll(filepath.Dir(opts.LogFileName), 0755)
+	if err != nil {
+		fmt.Println("Error creating log directory: ", err)
+		os.Exit(1)
 	}
 
 	var log_fd *os.File
