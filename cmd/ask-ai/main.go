@@ -86,6 +86,11 @@ func main() {
 	// Make sure we are setting the correct conversation id when not provided
 	if opts.ConversationID == 0 {
 		clientArgs.ConvID = LLM.FindLastConversationID(log_fd)
+		if clientArgs.ConvID == nil {
+			// Most likely this is the first conversation
+			clientArgs.ConvID = new(int)
+			*clientArgs.ConvID = 0
+		}
 		if !opts.ContinueChat {
 			(*clientArgs.ConvID)++
 		}

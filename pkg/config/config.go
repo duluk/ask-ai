@@ -55,6 +55,7 @@ func Initialize() (*Options, error) {
 	viper.SetDefault("model.system_prompt", "")
 	viper.SetDefault("log.file", filepath.Join(configDir, "ask-ai.chat.yml"))
 	viper.SetDefault("database.file", filepath.Join(configDir, "ask-ai.db"))
+	viper.SetDefault("database.table", "conversations")
 
 	// Now define the rest of the flags using values from viper (which now has
 	// config file values)
