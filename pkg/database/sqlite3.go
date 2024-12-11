@@ -151,6 +151,26 @@ func (sqlDB *ChatDB) SearchForConversation(keyword string) ([]int, error) {
 	return responses, nil
 }
 
+func (sqlDB *ChatDB) GetModel(convID int) (string, error) {
+	rows, err := sqlDB.db.Query(`
+		SELECT model_name FROM `+sqlDB.dbTable+` WHERE conv_id = ?;
+	`, convID)
+	if err != nil {
+		return "", fmt.Errorf("%v", err)
+	}
+	defer rows.Close()
+
+	var model string
+	for rows.Next() {
+		err := rows.Scan(&model)
+		if err != nil {
+			return "", fmt.Errorf("%v", err)
+		}
+	}
+
+	return model, nil
+}
+
 func (sqlDB *ChatDB) ShowConversation(convID int) {
 	rows, err := sqlDB.db.Query(`
 		SELECT prompt, response, model_name, temperature, input_tokens, output_tokens, conv_id

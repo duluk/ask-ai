@@ -51,6 +51,7 @@ func main() {
 	}
 	defer db.Close()
 
+	model := opts.Model
 	/* CONTEXT? LOAD IT */
 	var promptContext []LLM.LLMConversations
 	if opts.ConversationID != 0 {
@@ -59,11 +60,18 @@ func main() {
 		// promptContext, err = LLM.LoadConversationFromLog(log_fd,
 		// opts.ConversationID)
 		promptContext, err = db.LoadConversationFromDB(opts.ConversationID)
+		if !pflag.CommandLine.Changed("model") {
+			// model, _ = db.GetModel(opts.ConversationID)
+			model = promptContext[len(promptContext)-1].Model
+		}
 		if err != nil {
 			fmt.Println("Error loading conversation from log: ", err)
 		}
 	} else if opts.ContinueChat {
 		promptContext, err = LLM.ContinueConversation(log_fd)
+		if !pflag.CommandLine.Changed("model") {
+			model = promptContext[len(promptContext)-1].Model
+		}
 		if err != nil {
 			fmt.Println("Error reading log for continuing chat: ", err)
 		}
@@ -75,7 +83,7 @@ func main() {
 	}
 
 	clientArgs := LLM.ClientArgs{
-		Model:        &opts.Model,
+		Model:        &model,
 		SystemPrompt: &opts.SystemPrompt,
 		Context:      promptContext,
 		MaxTokens:    &opts.MaxTokens,
