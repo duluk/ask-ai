@@ -124,7 +124,34 @@ func main() {
 		}()
 
 		for {
-			prompt = getPromptFromUser(opts.Model)
+			prompt = getPromptFromUser(model)
+			if prompt[0] == '/' {
+				cmd := strings.Split(prompt, " ")[0]
+				switch cmd {
+				case "/help", "/?":
+					fmt.Println("Special commands:")
+					fmt.Println("  /exit: Exit the program")
+					fmt.Println("  /context: Show the current context")
+					fmt.Println("  /model <model>: Show the current model")
+					fmt.Println("  /id: Show the current conversation ID")
+					continue
+				case "/exit", "/quit":
+					fmt.Println("Goodbye!")
+					os.Exit(0)
+				case "/context":
+					fmt.Println("Context: ", promptContext)
+					continue
+				case "/model":
+					if len(prompt) > 6 && prompt[7:] != "" {
+						model = prompt[7:]
+						clientArgs.Model = &model
+					}
+					continue
+				case "/id":
+					fmt.Println("Conversation ID: ", *clientArgs.ConvID)
+					continue
+				}
+			}
 			clientArgs.Prompt = &prompt
 
 			chatWithLLM(clientArgs, opts.ContinueChat, db)
@@ -134,7 +161,7 @@ func main() {
 			if err != nil {
 				fmt.Println("Error reading log for continuing chat: ", err)
 			}
-			// TODO: promptContext will be nill if err != nil above. That's
+			// TODO: promptContext will be nil if err != nil above. That's
 			// probably what we want. Would write a test but not sure how to
 			// test the LLM functions without using tokens.
 			clientArgs.Context = promptContext
@@ -226,7 +253,9 @@ func getPromptFromUser(model string) string {
 
 	// Now clean up spaces and remove the newline we just captured
 	prompt = strings.TrimSpace(prompt)
-	prompt = prompt[:len(prompt)-1]
+	if prompt[len(prompt)-1] == '\n' {
+		prompt = prompt[:len(prompt)]
+	}
 
 	return prompt
 }
