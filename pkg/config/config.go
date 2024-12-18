@@ -147,10 +147,23 @@ func searchForConversation(search string) {
 		fmt.Printf("Error searching for conversation: %s", err)
 	}
 
-	fmt.Printf("Found %d conversations: ", len(ids))
+	uniqIDs := make([]int, 0)
+	unique := make(map[int]bool)
 	for _, id := range ids {
-		fmt.Printf("%d, ", id)
+		if !unique[id] {
+			unique[id] = true
+			uniqIDs = append(uniqIDs, id)
+		}
 	}
+
+	fmt.Printf("Found %d conversations: ", len(uniqIDs))
+	for i, id := range uniqIDs {
+		fmt.Printf("%d", id)
+		if i < len(uniqIDs)-1 {
+			fmt.Printf(", ")
+		}
+	}
+	fmt.Println()
 
 	os.Exit(0)
 }
