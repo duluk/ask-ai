@@ -36,6 +36,7 @@ type Options struct {
 const Version = "0.3.3"
 
 const MaxTermWidth = 80
+const widthPad = 5
 const TabWidth = 4
 
 var (
@@ -137,7 +138,7 @@ func Initialize() (*Options, error) {
 		MaxTokens:      viper.GetInt("model.max_tokens"),
 		Temperature:    float32(viper.GetFloat64("model.temperature")),
 		ConversationID: viper.GetInt("id"),
-		ScreenWidth:    min(viper.GetInt("screen.width"), MaxTermWidth),
+		ScreenWidth:    min(viper.GetInt("screen.width"), MaxTermWidth) - widthPad,
 		ScreenHeight:   viper.GetInt("screen.height"),
 		TabWidth:       TabWidth,
 	}, nil
