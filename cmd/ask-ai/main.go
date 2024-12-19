@@ -112,7 +112,7 @@ func main() {
 		prompt = pflag.Arg(0)
 		clientArgs.Prompt = &prompt
 
-		chatWithLLM(clientArgs, opts.ContinueChat, db)
+		chatWithLLM(opts, clientArgs, db)
 	} else {
 		// Gracefully handle CTRL-C interrupt signal
 		sig := make(chan os.Signal, 1)
@@ -154,7 +154,7 @@ func main() {
 			}
 			clientArgs.Prompt = &prompt
 
-			chatWithLLM(clientArgs, opts.ContinueChat, db)
+			chatWithLLM(opts, clientArgs, db)
 
 			opts.ContinueChat = true
 			promptContext, err = LLM.ContinueConversation(log_fd)
@@ -169,10 +169,11 @@ func main() {
 	}
 }
 
-func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
+func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB) {
 	var client LLM.Client
 	log := args.Log
 	model := *args.Model
+	continueChat := opts.ContinueChat
 
 	switch model {
 	case "chatgpt":
@@ -201,7 +202,7 @@ func chatWithLLM(args LLM.ClientArgs, continueChat bool, db *database.ChatDB) {
 	)
 
 	fmt.Println("Assistant: ")
-	resp, err := client.Chat(args)
+	resp, err := client.Chat(args, opts.ScreenWidth, opts.TabWidth)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)

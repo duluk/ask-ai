@@ -48,7 +48,7 @@ func NewAnthropic() *Anthropic {
 	return &Anthropic{APIKey: api_key, Client: client}
 }
 
-func (cs *Anthropic) Chat(args ClientArgs) (ClientResponse, error) {
+func (cs *Anthropic) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error) {
 	prompt := args.Prompt
 	client := cs.Client
 
@@ -57,7 +57,7 @@ func (cs *Anthropic) Chat(args ClientArgs) (ClientResponse, error) {
 
 	myInputEstimate := EstimateTokens(*args.Prompt + *args.SystemPrompt)
 
-	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
+	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{

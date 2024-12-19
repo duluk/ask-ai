@@ -9,10 +9,6 @@ import (
 	"github.com/openai/openai-go"
 )
 
-// TODO: make this configurable
-const TermWidth = 80
-const TabWidth = 4
-
 type LLMConversations struct {
 	Role            string `yaml:"role"`
 	Content         string `yaml:"content"`
@@ -32,7 +28,7 @@ type ClientResponse struct {
 }
 
 type Client interface {
-	Chat(args ClientArgs) (ClientResponse, error)
+	Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error)
 }
 
 type Anthropic struct {

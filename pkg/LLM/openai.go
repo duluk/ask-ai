@@ -22,7 +22,7 @@ func NewOpenAI(apiLLC string, apiURL string) *OpenAI {
 	return &OpenAI{APIKey: apiKey, Client: client}
 }
 
-func (cs *OpenAI) Chat(args ClientArgs) (ClientResponse, error) {
+func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error) {
 	client := cs.Client
 
 	var msgCtx string
@@ -84,7 +84,7 @@ func (cs *OpenAI) Chat(args ClientArgs) (ClientResponse, error) {
 	// conversational.
 	var resp string
 	var usage *openai.CompletionUsage
-	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
+	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
 	for stream.Next() {
 		evt := stream.Current()
 		if len(evt.Choices) > 0 {

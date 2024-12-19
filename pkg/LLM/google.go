@@ -51,7 +51,7 @@ func (cs *Google) SimpleChat(args ClientArgs) error {
 	return nil
 }
 
-func (cs *Google) Chat(args ClientArgs) (ClientResponse, error) {
+func (cs *Google) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error) {
 	client := cs.Client
 	ctx := cs.Context
 
@@ -70,7 +70,7 @@ func (cs *Google) Chat(args ClientArgs) (ClientResponse, error) {
 	myInputEstimate := EstimateTokens(prompt + *args.SystemPrompt)
 
 	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
-	wrapper := linewrap.NewLineWrapper(TermWidth, TabWidth, os.Stdout)
+	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
 	for {
 		resp, err := iter.Next()
 		if err == iterator.Done {
