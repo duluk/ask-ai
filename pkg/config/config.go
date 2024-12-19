@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/term"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
@@ -26,9 +28,15 @@ type Options struct {
 	MaxTokens      int
 	Temperature    float32
 	ConversationID int
+	ScreenWidth    int
+	ScreenHeight   int
+	TabWidth       int
 }
 
 const Version = "0.3.3"
+
+const MaxTermWidth = 80
+const TabWidth = 4
 
 var (
 	commit = "Unknown"
@@ -48,6 +56,8 @@ func Initialize() (*Options, error) {
 		return nil, fmt.Errorf("error setting up config: %w", err)
 	}
 
+	width, height := determineScreenSize()
+
 	viper.SetDefault("model.default", "claude")
 	viper.SetDefault("model.context_length", 2048)
 	viper.SetDefault("model.max_tokens", 512)
@@ -56,6 +66,8 @@ func Initialize() (*Options, error) {
 	viper.SetDefault("log.file", filepath.Join(configDir, "ask-ai.chat.yml"))
 	viper.SetDefault("database.file", filepath.Join(configDir, "ask-ai.db"))
 	viper.SetDefault("database.table", "conversations")
+	viper.SetDefault("screen.width", width)
+	viper.SetDefault("screen.height", height)
 
 	// Now define the rest of the flags using values from viper (which now has
 	// config file values)
@@ -74,6 +86,8 @@ func Initialize() (*Options, error) {
 	pflag.IntP("id", "i", 0, "ID of the conversation to continue")
 	pflag.StringP("search", "s", "", "Search for a conversation")
 	pflag.IntP("show", "", 0, "Show conversation with ID")
+	pflag.StringP("width", "", "", "Width of the screen for linewrap")
+	pflag.StringP("height", "", "", "Height of the screen for linewrap")
 
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
@@ -88,6 +102,8 @@ func Initialize() (*Options, error) {
 	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
 	viper.BindPFlag("model.context_length", pflag.Lookup("context-length"))
 	viper.BindPFlag("model.temperature", pflag.Lookup("temperature"))
+	viper.BindPFlag("screen.width", pflag.Lookup("width"))
+	viper.BindPFlag("screen.height", pflag.Lookup("height"))
 
 	viper.BindPFlag("version", pflag.Lookup("version"))
 	viper.BindPFlag("full-version", pflag.Lookup("full-version"))
@@ -121,7 +137,21 @@ func Initialize() (*Options, error) {
 		MaxTokens:      viper.GetInt("model.max_tokens"),
 		Temperature:    float32(viper.GetFloat64("model.temperature")),
 		ConversationID: viper.GetInt("id"),
+		ScreenWidth:    min(viper.GetInt("screen.width"), MaxTermWidth),
+		ScreenHeight:   viper.GetInt("screen.height"),
+		TabWidth:       TabWidth,
 	}, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	return -min(-a, -b)
 }
 
 // Maybe this shouldn't be in config...
@@ -166,6 +196,15 @@ func searchForConversation(search string) {
 	fmt.Println()
 
 	os.Exit(0)
+}
+
+func determineScreenSize() (int, int) {
+	width, height, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		return 80, 24
+	}
+
+	return width, height
 }
 
 func showConversation(convID int) {
@@ -264,4 +303,8 @@ func DumpConfig(cfg *Options) {
 	fmt.Printf("SystemPrompt: %s\n", cfg.SystemPrompt)
 	fmt.Printf("MaxTokens: %d\n", cfg.MaxTokens)
 	fmt.Printf("Temperature: %f\n", cfg.Temperature)
+	fmt.Printf("ConversationID: %d\n", cfg.ConversationID)
+	fmt.Printf("ScreenWidth: %d\n", cfg.ScreenWidth)
+	fmt.Printf("ScreenHeight: %d\n", cfg.ScreenHeight)
+	fmt.Printf("TabWidth: %d\n", cfg.TabWidth)
 }
