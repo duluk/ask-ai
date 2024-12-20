@@ -9,6 +9,10 @@ import (
 	"github.com/openai/openai-go"
 )
 
+const DefaultSummaryPrompt = ""
+const DefaultSummaryAPI = "openai"
+const DefaultSummaryModel = "gpt-3.5-turbo"
+
 type LLMConversations struct {
 	Role            string `yaml:"role"`
 	Content         string `yaml:"content"`

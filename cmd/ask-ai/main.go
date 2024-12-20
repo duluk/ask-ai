@@ -167,6 +167,27 @@ func main() {
 			clientArgs.Context = promptContext
 		}
 	}
+
+}
+
+func summarize(convID int, db *database.ChatDB) (string, error) {
+	dbLLMConversation, err := db.LoadConversationFromDB(convID)
+	if err != nil {
+		return "", fmt.Errorf("Error getting full conversation: %v", err)
+	}
+
+	conversation := ""
+	for _, conv := range dbLLMConversation {
+		conversation += conv.Content + "\n"
+	}
+
+	summarizer := LLM.NewSummarizer(LLM.DefaultSummaryAPI)
+	summary, err := summarizer.GenerateSummary(conversation, LLM.DefaultSummaryPrompt)
+	if err != nil {
+		return "", fmt.Errorf("Error generating summary: %v", err)
+	}
+
+	return summary, nil
 }
 
 func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB) {
