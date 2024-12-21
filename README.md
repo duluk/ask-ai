@@ -12,7 +12,7 @@ Go:
 
 ```bash
 $ go mod tidy
-$ go build ask-ai.go
+$ go build cmd/ask-ai/main.go
 ```
 
 Or, as I'm doing now (bc I'm old):
@@ -29,7 +29,7 @@ $ make install
 ## Usage
 
 #### Set the API Key
-1. Set {OPENAI,ANTHROPIC}_API_KEY in your environment; or
+1. Set {OPENAI,ANTHROPIC,GOOGLE,XAI}_API_KEY in your environment; or
 1. Put the key in a file located at `$HOME/.config/ask-ai/{openai,anthropic,google,xai}-api-key`
 
 #### Ask a model a question
@@ -40,7 +40,7 @@ $ bin/ask-ai "What is the best chess opening for a beginner?"
 * If no query is provided, ask-ai will prompt for one:
 ```
 $ bin/ask-ai
-> What is the best chess opening for a checkers player?
+chatgpt> What is the best chess opening for a checkers player?
 ```
 
 * You can provide a model with `--model <model>`:
@@ -57,9 +57,23 @@ $ bin/ask-ai --model grok --continue "So you're always mostly up to date?"
 
 * Use last `n` queries for context:
 ```bash
-$ bin/ask-ai --context 3 "What are the last 3 things we talked abuot?"
+$ bin/ask-ai --context 3 "What are the last 3 things we talked about?"
+```
+
+* Search conversation history for a previous chat:
+```bash
+$ bin/ask-ai --search "chess openings"
+```
+
+* Show a specific conversation:
+```bash
+$ bin/ask-ai --show 3
+```
+
+* Continue a specific conversation:
+```bash
+$ bin/ask-ai --id 42 "What about the Reti?"
 ```
 
 ### [NOTE]
 > This is a work in progress and not all functionality has been added.
-
