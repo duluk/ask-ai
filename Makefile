@@ -51,8 +51,6 @@ test: $(TST_FILES)
 		$(GOCYCLO) --over 12 . || exit 0 ; \
 	fi
 
-
-
 check: vet
 
 fmt: $(CMD_FILES)
