@@ -72,7 +72,7 @@ func Initialize() (*Options, error) {
 
 	// Now define the rest of the flags using values from viper (which now has
 	// config file values)
-	pflag.StringP("model", "m", viper.GetString("model.default"), "Which LLM to use (claude|chatgpt|gemini|grok)")
+	pflag.StringP("model", "m", viper.GetString("model.default"), "Which LLM to use (claude|chatgpt|gemini|grok|deepseek)")
 	pflag.IntP("context", "n", 0, "Use previous n messages for context")
 	pflag.IntP("context-length", "l", viper.GetInt("model.context_length"), "Maximum context length")
 	pflag.BoolP("continue", "c", false, "Continue previous conversation")
