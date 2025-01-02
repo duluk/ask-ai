@@ -186,6 +186,8 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	case "grok":
 		api_url := "https://api.x.ai/v1/"
 		client = LLM.NewOpenAI("xai", api_url)
+	case "deepseek":
+		client = LLM.NewDeepSeek()
 	default:
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
