@@ -7,6 +7,8 @@ import (
 	"github.com/google/generative-ai-go/genai"
 	"github.com/liushuangls/go-anthropic/v2"
 	"github.com/openai/openai-go"
+
+	"github.com/duluk/ask-ai/pkg/deepseek"
 )
 
 type LLMConversations struct {
@@ -39,6 +41,11 @@ type Anthropic struct {
 type OpenAI struct {
 	APIKey string
 	Client *openai.Client
+}
+
+type DeepSeek struct {
+	APIKey string
+	Client *deepseek.Client
 }
 
 type Google struct {
