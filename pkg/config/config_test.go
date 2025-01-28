@@ -73,7 +73,7 @@ func TestInitialize(t *testing.T) {
 			args: []string{},
 			validate: func(t *testing.T, opts *Options, err error) {
 				assert.NoError(t, err)
-				assert.Equal(t, "claude", opts.Model)
+				assert.Equal(t, "ollama", opts.Model)
 				assert.Equal(t, 512, opts.MaxTokens)
 				assert.Equal(t, 2048, opts.ContextLength)
 				assert.Equal(t, float32(0.7), opts.Temperature)
