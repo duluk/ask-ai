@@ -104,11 +104,5 @@ func (c *Client) ChatCompletion(req ChatCompletionRequest) (*ChatCompletionRespo
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
 
-	if len(response.Choices) > 0 {
-		fmt.Println("Response:", response.Choices[0].Message.Content)
-	} else {
-		fmt.Println("No response received")
-	}
-
 	return &response, nil
 }
