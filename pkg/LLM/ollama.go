@@ -30,12 +30,14 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 		}
 	}
 
-	const OllamaModelDeepseekR1 = "deepseek-r1:8b"
+	const minTokens = 32768
+	const OllamaModelDeepseekR1_8b = "deepseek-r1:8b"
+	const OllamaModelDeepseekR1_14b = "deepseek-r1:14b"
 
 	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	adjustedMaxTokens := int(myInputEstimate + int32(*args.MaxTokens))
 	req := ollama.ChatCompletionRequest{
-		Model: OllamaModelDeepseekR1,
+		Model: OllamaModelDeepseekR1_14b,
 		Messages: []ollama.Message{
 			{
 				Role:    "system",
@@ -51,7 +53,7 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 			},
 		},
 		// Since this is a local model, let's give it some room to cook
-		MaxTokens:   max(adjustedMaxTokens, 16384),
+		MaxTokens:   max(adjustedMaxTokens, minTokens),
 		Temperature: float64(*args.Temperature),
 	}
 
