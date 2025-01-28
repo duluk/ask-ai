@@ -257,7 +257,7 @@ func getPromptFromUser(model string) string {
 	// Now clean up spaces and remove the newline we just captured
 	prompt = strings.TrimSpace(prompt)
 	if prompt[len(prompt)-1] == '\n' {
-		prompt = prompt[:len(prompt)]
+		prompt = prompt[:len(prompt)-1]
 	}
 
 	return prompt
