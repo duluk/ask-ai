@@ -188,6 +188,8 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		client = LLM.NewOpenAI("xai", api_url)
 	case "deepseek":
 		client = LLM.NewDeepSeek()
+	case "ollama":
+		client = LLM.NewOllama()
 	default:
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
