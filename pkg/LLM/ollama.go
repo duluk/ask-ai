@@ -32,7 +32,7 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 
 	const OllamaModelDeepseekR1 = "deepseek-r1:8b"
 
-	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
+	// myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	req := ollama.ChatCompletionRequest{
 		Model: OllamaModelDeepseekR1,
 		Messages: []ollama.Message{
@@ -59,6 +59,8 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 		return ClientResponse{}, err
 	}
 
+	usage := resp.Usage
+
 	respText := resp.Choices[0].Message.Content
 	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
 
@@ -68,7 +70,7 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 
 	return ClientResponse{
 		Text:         respText,
-		InputTokens:  myInputEstimate,
-		OutputTokens: int32(len(respText)),
+		InputTokens:  usage.PromptTokens,
+		OutputTokens: usage.CompletionTokens,
 	}, nil
 }
