@@ -188,6 +188,8 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		client = LLM.NewOpenAI("xai", api_url)
 	case "deepseek":
 		client = LLM.NewDeepSeek()
+	case "ollama":
+		client = LLM.NewOllama()
 	default:
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
@@ -257,7 +259,7 @@ func getPromptFromUser(model string) string {
 	// Now clean up spaces and remove the newline we just captured
 	prompt = strings.TrimSpace(prompt)
 	if prompt[len(prompt)-1] == '\n' {
-		prompt = prompt[:len(prompt)]
+		prompt = prompt[:len(prompt)-1]
 	}
 
 	return prompt

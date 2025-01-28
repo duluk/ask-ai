@@ -9,6 +9,7 @@ import (
 	"github.com/openai/openai-go"
 
 	"github.com/duluk/ask-ai/pkg/deepseek"
+	"github.com/duluk/ask-ai/pkg/ollama"
 )
 
 type LLMConversations struct {
@@ -52,6 +53,11 @@ type Google struct {
 	APIKey  string
 	Client  *genai.Client
 	Context context.Context
+}
+
+type Ollama struct {
+	APIKey string
+	Client *ollama.Client
 }
 
 type ClientArgs struct {
