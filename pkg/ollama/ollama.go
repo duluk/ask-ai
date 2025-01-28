@@ -56,8 +56,8 @@ func (c *Client) ChatCompletion(req ChatCompletionRequest) (*ChatCompletionRespo
 	requestData := ChatCompletionRequest{
 		Model:       req.Model,
 		Messages:    req.Messages,
-		MaxTokens:   1024,
-		Temperature: 0.5,
+		MaxTokens:   req.MaxTokens,
+		Temperature: req.Temperature,
 	}
 
 	jsonData, err := json.Marshal(requestData)
