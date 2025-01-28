@@ -59,7 +59,7 @@ func Initialize() (*Options, error) {
 
 	width, height := determineScreenSize()
 
-	viper.SetDefault("model.default", "claude")
+	viper.SetDefault("model.default", "ollama")
 	viper.SetDefault("model.context_length", 2048)
 	viper.SetDefault("model.max_tokens", 512)
 	viper.SetDefault("model.temperature", 0.7)
