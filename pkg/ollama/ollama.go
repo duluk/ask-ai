@@ -78,7 +78,6 @@ func (c *Client) ChatCompletion(req ChatCompletionRequest) (*ChatCompletionRespo
 	httpReq.Header.Set("Content-Type", "application/json")
 	// If this is empty, it's fine (and probably the default)
 	httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
-	fmt.Printf("Request: %v\n", httpReq)
 
 	resp, err := c.HTTPClient.Do(httpReq)
 	if err != nil {
