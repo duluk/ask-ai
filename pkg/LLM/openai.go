@@ -38,8 +38,10 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	}
 
 	const ChatModelGrokBeta openai.ChatModel = "grok-beta"
+	const ChatModelGrok2 openai.ChatModel = "grok-2-latest"
 	const ChatModelDeepSeekChat openai.ChatModel = "deepseek-chat"
 	const ChatModelDeepSeekv3 openai.ChatModel = "deepseek-v3"
+
 	var model openai.ChatModel
 	switch *args.Model {
 	case "chatgpt":
@@ -51,7 +53,7 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 		// model = openai.ChatModelO1Mini // Tailored for coding and math
 		model = openai.ChatModelGPT4o
 	case "grok":
-		model = ChatModelGrokBeta
+		model = ChatModelGrok2
 	case "deepseek":
 		model = ChatModelDeepSeekChat
 	}

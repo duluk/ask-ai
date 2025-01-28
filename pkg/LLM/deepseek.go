@@ -37,7 +37,7 @@ func (cs *DeepSeek) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientRe
 
 	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	req := deepseek.ChatCompletionRequest{
-		Model: "deepseek-chat",
+		Model: ChatModelDeepSeekChat,
 		Messages: []deepseek.Message{
 			{
 				Role:    "system",
