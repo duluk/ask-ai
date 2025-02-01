@@ -40,7 +40,7 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	const ChatModelGrokBeta openai.ChatModel = "grok-beta"
 	const ChatModelGrok2 openai.ChatModel = "grok-2-latest"
 	const ChatModelDeepSeekChat openai.ChatModel = "deepseek-chat"
-	const ChatModelDeepSeekv3 openai.ChatModel = "deepseek-v3"
+	const ChatModelDeepSeekReasoner openai.ChatModel = "deepseek-reasoner"
 
 	var model openai.ChatModel
 	switch *args.Model {
@@ -55,7 +55,7 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	case "grok":
 		model = ChatModelGrok2
 	case "deepseek":
-		model = ChatModelDeepSeekChat
+		model = ChatModelDeepSeekReasoner
 	}
 
 	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)

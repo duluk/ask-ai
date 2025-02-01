@@ -33,7 +33,7 @@ func (cs *DeepSeek) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientRe
 	}
 
 	const ChatModelDeepSeekChat = "deepseek-chat"
-	const ChatModelDeepSeekv3 = "deepseek-v3"
+	const ChatModelDeepSeekReasoner = "deepseek-reasoner"
 
 	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	req := deepseek.ChatCompletionRequest{
