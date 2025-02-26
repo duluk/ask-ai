@@ -8,8 +8,7 @@ Full disclosure: this is my first Go project. I mainly write in Ruby, C and Pyth
 
 ## Building
 
-Go:
-
+### Go Version
 ```bash
 $ go mod tidy
 $ go build cmd/ask-ai/main.go
@@ -20,10 +19,27 @@ Or, as I'm doing now (bc I'm old):
 $ make
 ```
 
+### TypeScript Version
+```bash
+$ npm install
+$ npm run build
+```
+
 ## Installation
 
+### Go Version
 ```bash
 $ make install
+```
+
+### TypeScript Version
+```bash
+$ npm install -g
+```
+
+Or run directly:
+```bash
+$ npm run start -- [args]
 ```
 
 ## Usage
