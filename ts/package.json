@@ -25,7 +25,8 @@
     "format": "prettier --write 'src/**/*.ts'",
     "postinstall": "npm run build",
     "package": "pkg . --no-bytecode",
-    "install-app": "npm run build && npm install -g"
+    "install-app": "npm run build && npm install -g",
+    "install-bin": "npm run package && cp dist/bin/ask-ai-ts-linux ~/.local/bin/ask-ai-ts"
   },
   "author": "",
   "license": "MIT",
