@@ -24,7 +24,8 @@
     "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --write 'src/**/*.ts'",
     "postinstall": "npm run build",
-    "package": "pkg . --no-bytecode"
+    "package": "pkg . --no-bytecode",
+    "install-app": "npm run build && npm install -g"
   },
   "author": "",
   "license": "MIT",
