@@ -11,12 +11,12 @@ export interface Config {
 }
 
 const DEFAULT_CONFIG: Config = {
-  defaultModel: 'gpt-3.5-turbo',
+  defaultModel: 'chatgpt-4o-latest',
   modelsMap: {
-    'chatgpt': 'gpt-3.5-turbo',
+    'chatgpt': 'chatgpt-4o-latest',
     'gpt4': 'gpt-4',
-    'claude': 'claude-3-haiku-20240307',
-    'gemini': 'gemini-pro',
+    'claude': 'claude-3-7-sonnet-20250219',
+    'gemini': 'gemini-2.0-flash-001',
     'llama2': 'llama2:latest',
     'mistral': 'mistral:latest',
     'deepseek': 'deepseek-coder:latest'
@@ -28,19 +28,19 @@ const DEFAULT_CONFIG: Config = {
 export function loadConfig(): Config {
   const configDir = path.join(os.homedir(), '.config', 'ask-ai');
   const configPath = path.join(configDir, 'config.yml');
-  
+
   try {
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
     }
-    
+
     if (!fs.existsSync(configPath)) {
       return DEFAULT_CONFIG;
     }
-    
+
     const fileContents = fs.readFileSync(configPath, 'utf8');
     const userConfig = yaml.parse(fileContents);
-    
+
     return {
       ...DEFAULT_CONFIG,
       ...userConfig
@@ -56,7 +56,7 @@ export function getModelName(modelAlias: string, config: Config): string {
   if (config.modelsMap[modelAlias]) {
     return config.modelsMap[modelAlias];
   }
-  
+
   // Otherwise return the original string (might be a direct model name)
   return modelAlias;
 }
