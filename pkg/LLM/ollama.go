@@ -31,13 +31,14 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	}
 
 	const minTokens = 32768
+	const OllamaModelGemma2 = "gemma2:9b"
 	const OllamaModelDeepseekR1_8b = "deepseek-r1:8b"
 	const OllamaModelDeepseekR1_14b = "deepseek-r1:14b"
 
 	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	adjustedMaxTokens := int(myInputEstimate + int32(*args.MaxTokens))
 	req := ollama.ChatCompletionRequest{
-		Model: OllamaModelDeepseekR1_14b,
+		Model: OllamaModelGemma2,
 		Messages: []ollama.Message{
 			{
 				Role:    "system",
