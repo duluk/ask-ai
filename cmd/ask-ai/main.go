@@ -196,52 +196,63 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
 	}
-	LLM.LogChat(
-		log,
-		"User",
-		*args.Prompt,
-		"",
-		continueChat,
-		LLM.EstimateTokens(*args.Prompt),
-		0,
-		*args.ConvID,
-	)
 
-	fmt.Println("Assistant: ")
+	if !opts.NoRecord {
+		LLM.LogChat(
+			log,
+			"User",
+			*args.Prompt,
+			"",
+			continueChat,
+			LLM.EstimateTokens(*args.Prompt),
+			0,
+			*args.ConvID,
+		)
+	}
+
+	if !opts.Quiet {
+		fmt.Println("Assistant: ")
+	}
+
 	resp, err := client.Chat(args, opts.ScreenWidth, opts.TabWidth)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
 	}
-	fmt.Printf("\n\n-%s (convID: %d)\n", model, *args.ConvID)
+
+	if !opts.Quiet {
+		fmt.Printf("\n\n-%s (convID: %d)\n", model, *args.ConvID)
+	}
 
 	// If we want the timestamp in the log and in the database to match
 	// exactly, we can set it here and pass it in to LogChat and
 	// InsertConversation. As it stands, each function uses the current
 	// timestamp when the function is executed.
 
-	LLM.LogChat(
-		log,
-		"Assistant",
-		resp.Text,
-		model,
-		continueChat,
-		resp.InputTokens,
-		resp.OutputTokens,
-		*args.ConvID,
-	)
+	if !opts.NoRecord {
+		LLM.LogChat(
+			log,
+			"Assistant",
+			resp.Text,
+			model,
+			continueChat,
+			resp.InputTokens,
+			resp.OutputTokens,
+			*args.ConvID,
+		)
 
-	err = db.InsertConversation(
-		*args.Prompt,
-		resp.Text,
-		model,
-		*args.Temperature,
-		resp.InputTokens,
-		resp.OutputTokens,
-		*args.ConvID,
-	)
-	if err != nil {
-		fmt.Println("error inserting conversation into database: ", err)
+		err = db.InsertConversation(
+			*args.Prompt,
+			resp.Text,
+			model,
+			*args.Temperature,
+			resp.InputTokens,
+			resp.OutputTokens,
+			*args.ConvID,
+		)
+		if err != nil {
+			fmt.Println("error inserting conversation into database: ", err)
+		}
 	}
 }
 

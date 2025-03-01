@@ -33,11 +33,13 @@ export abstract class BaseLLMClient implements LLMClient {
     }
 
     const homeDir = process.env.HOME || process.env.USERPROFILE;
-    if (homeDir) {
+    const path = require('path');
+    const configDir = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
+    if (configDir) {
       const fs = require('fs');
       const path = require('path');
 
-      const keyPath = path.join(homeDir, '.config', 'ask-ai', `${provider.toLowerCase()}-api-key`);
+      const keyPath = path.join(configDir, 'ask-ai', `${provider.toLowerCase()}-api-key`);
       try {
         if (fs.existsSync(keyPath)) {
           return fs.readFileSync(keyPath, 'utf8').trim();
