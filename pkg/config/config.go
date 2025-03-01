@@ -37,9 +37,11 @@ type Options struct {
 
 const Version = "0.3.3"
 
-const MaxTermWidth = 80
-const widthPad = 5
-const TabWidth = 4
+const (
+	MaxTermWidth = 80
+	widthPad     = 5
+	TabWidth     = 4
+)
 
 var (
 	commit = "Unknown"
@@ -130,7 +132,6 @@ func Initialize() (*Options, error) {
 		showConversation(viper.GetInt("show"))
 	}
 
-	// Create and return options
 	return &Options{
 		Model:          pflag.Lookup("model").Value.String(),
 		Context:        viper.GetInt("context"),

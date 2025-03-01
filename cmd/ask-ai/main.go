@@ -30,14 +30,14 @@ func main() {
 		config.DumpConfig(opts)
 	}
 
-	err = os.MkdirAll(filepath.Dir(opts.LogFileName), 0755)
+	err = os.MkdirAll(filepath.Dir(opts.LogFileName), 0o755)
 	if err != nil {
 		fmt.Println("Error creating log directory: ", err)
 		os.Exit(1)
 	}
 
 	var log_fd *os.File
-	log_fd, err = os.OpenFile(opts.LogFileName, os.O_RDWR|os.O_CREATE, 0644)
+	log_fd, err = os.OpenFile(opts.LogFileName, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		fmt.Println("Error with chat log file: ", err)
 	}
