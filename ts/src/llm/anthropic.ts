@@ -4,10 +4,10 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export class AnthropicClient extends BaseLLMClient {
   private client: Anthropic | null = null;
-  
+
   constructor(config: LLMConfig) {
     super(config);
-    
+
     const apiKey = this.getApiKey('anthropic');
     if (apiKey) {
       this.client = new Anthropic({
@@ -15,17 +15,17 @@ export class AnthropicClient extends BaseLLMClient {
       });
     }
   }
-  
+
   async send(messages: Message[], config?: Partial<LLMConfig>): Promise<LLMResponse> {
     if (!this.client) {
       throw new Error('Anthropic client not initialized. API key may be missing.');
     }
-    
+
     const mergedConfig = {
       ...this.config,
       ...config
     };
-    
+
     try {
       // Convert messages to Anthropic format
       const formattedMessages = messages
@@ -34,14 +34,14 @@ export class AnthropicClient extends BaseLLMClient {
           role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
           content: msg.content
         }));
-      
+
       // System message needs special handling
       const systemMessage = messages.find(msg => msg.role === 'system');
       const systemPrompt = systemMessage?.content;
-      
+
       // Make sure max_tokens is a number and not undefined
       const maxTokens = mergedConfig.maxTokens || 1024;
-      
+
       const response = await this.client.messages.create({
         model: mergedConfig.modelName,
         messages: formattedMessages,
@@ -49,7 +49,7 @@ export class AnthropicClient extends BaseLLMClient {
         max_tokens: maxTokens,
         temperature: mergedConfig.temperature,
       });
-      
+
       return {
         content: response.content[0]?.text || '',
         usage: {
@@ -64,7 +64,7 @@ export class AnthropicClient extends BaseLLMClient {
       throw error;
     }
   }
-  
+
   async isAvailable(): Promise<boolean> {
     return !!this.client;
   }

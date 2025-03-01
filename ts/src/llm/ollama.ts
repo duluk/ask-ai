@@ -19,27 +19,27 @@ interface OllamaCompletionResponse {
 
 export class OllamaClient extends BaseLLMClient {
   private baseUrl: string;
-  
+
   constructor(config: LLMConfig) {
     super(config);
-    
+
     // Default to localhost:11434 if not specified
     this.baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
   }
-  
+
   async send(messages: Message[], config?: Partial<LLMConfig>): Promise<LLMResponse> {
     const mergedConfig = {
       ...this.config,
       ...config
     };
-    
+
     try {
       // Format messages for Ollama
       const ollamaMessages = messages.map(msg => ({
         role: msg.role,
         content: msg.content
       }));
-      
+
       // Make request to Ollama API
       const response = await axios.post<OllamaCompletionResponse>(`${this.baseUrl}/api/chat`, {
         model: mergedConfig.modelName,
@@ -50,7 +50,7 @@ export class OllamaClient extends BaseLLMClient {
         },
         stream: false
       });
-      
+
       return {
         content: response.data.message.content,
         usage: {
@@ -65,7 +65,7 @@ export class OllamaClient extends BaseLLMClient {
       throw error;
     }
   }
-  
+
   async isAvailable(): Promise<boolean> {
     try {
       // Check if Ollama is running by making a request to the API

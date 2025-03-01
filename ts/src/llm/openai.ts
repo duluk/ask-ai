@@ -4,10 +4,10 @@ import OpenAI from 'openai';
 
 export class OpenAIClient extends BaseLLMClient {
   private client: OpenAI | null = null;
-  
+
   constructor(config: LLMConfig) {
     super(config);
-    
+
     const apiKey = this.getApiKey('openai');
     if (apiKey) {
       this.client = new OpenAI({
@@ -15,17 +15,17 @@ export class OpenAIClient extends BaseLLMClient {
       });
     }
   }
-  
+
   async send(messages: Message[], config?: Partial<LLMConfig>): Promise<LLMResponse> {
     if (!this.client) {
       throw new Error('OpenAI client not initialized. API key may be missing.');
     }
-    
+
     const mergedConfig = {
       ...this.config,
       ...config
     };
-    
+
     try {
       const response = await this.client.chat.completions.create({
         model: mergedConfig.modelName,
@@ -33,9 +33,9 @@ export class OpenAIClient extends BaseLLMClient {
         max_tokens: mergedConfig.maxTokens,
         temperature: mergedConfig.temperature,
       });
-      
+
       const usage = response.usage;
-      
+
       return {
         content: response.choices[0]?.message.content || '',
         finishReason: response.choices[0]?.finish_reason,
@@ -50,7 +50,7 @@ export class OpenAIClient extends BaseLLMClient {
       throw error;
     }
   }
-  
+
   async isAvailable(): Promise<boolean> {
     return !!this.client;
   }

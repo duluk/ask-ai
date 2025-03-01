@@ -5,31 +5,31 @@ import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 export class GoogleClient extends BaseLLMClient {
   private client: GoogleGenerativeAI | null = null;
   private model: GenerativeModel | null = null;
-  
+
   constructor(config: LLMConfig) {
     super(config);
-    
+
     const apiKey = this.getApiKey('google');
     if (apiKey) {
       this.client = new GoogleGenerativeAI(apiKey);
       this.model = this.client.getGenerativeModel({ model: config.modelName });
     }
   }
-  
+
   async send(messages: Message[], config?: Partial<LLMConfig>): Promise<LLMResponse> {
     if (!this.client || !this.model) {
       throw new Error('Google client not initialized. API key may be missing.');
     }
-    
+
     const mergedConfig = {
       ...this.config,
       ...config
     };
-    
+
     try {
       // Extract system message if present
       const systemMessage = messages.find(msg => msg.role === 'system');
-      
+
       // Format chat history for Google's API
       const chatHistory = messages
         .filter(msg => msg.role !== 'system')
@@ -37,7 +37,7 @@ export class GoogleClient extends BaseLLMClient {
           role: msg.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: msg.content }]
         }));
-      
+
       // Create chat session with generation config
       const chatConfig: any = {
         generationConfig: {
@@ -45,7 +45,7 @@ export class GoogleClient extends BaseLLMClient {
           temperature: mergedConfig.temperature
         }
       };
-      
+
       // Add system instruction if available
       // Note: Different versions of the Google API may handle system prompts differently
       if (systemMessage?.content) {
@@ -56,9 +56,9 @@ export class GoogleClient extends BaseLLMClient {
           }
         ];
       }
-      
+
       const chat = this.model.startChat(chatConfig);
-      
+
       // If there's existing chat history, replay it
       let lastResponse = null;
       if (chatHistory.length > 0) {
@@ -70,17 +70,17 @@ export class GoogleClient extends BaseLLMClient {
           }
         }
       }
-      
+
       // Get the last user message and send it (if it wasn't already sent)
       const lastUserMessage = messages[messages.length - 1];
       if (lastUserMessage.role === 'user' && !lastResponse) {
         lastResponse = await chat.sendMessage(lastUserMessage.content);
       }
-      
+
       if (!lastResponse) {
         throw new Error('No response from Gemini API');
       }
-      
+
       return {
         content: lastResponse.response.text(),
         usage: {
@@ -95,7 +95,7 @@ export class GoogleClient extends BaseLLMClient {
       throw error;
     }
   }
-  
+
   async isAvailable(): Promise<boolean> {
     return !!this.client && !!this.model;
   }
