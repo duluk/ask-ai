@@ -31,6 +31,8 @@ type Options struct {
 	ScreenWidth    int
 	ScreenHeight   int
 	TabWidth       int
+	Quiet          bool
+	NoRecord       bool
 }
 
 const Version = "0.3.3"
@@ -69,6 +71,7 @@ func Initialize() (*Options, error) {
 	viper.SetDefault("database.table", "conversations")
 	viper.SetDefault("screen.width", width)
 	viper.SetDefault("screen.height", height)
+	viper.SetDefault("output.quiet", false)
 
 	// Now define the rest of the flags using values from viper (which now has
 	// config file values)
@@ -89,6 +92,8 @@ func Initialize() (*Options, error) {
 	pflag.IntP("show", "", 0, "Show conversation with ID")
 	pflag.StringP("width", "", "", "Width of the screen for linewrap")
 	pflag.StringP("height", "", "", "Height of the screen for linewrap")
+	pflag.BoolP("quiet", "q", false, "Output only the LLM response")
+	pflag.BoolP("no-record", "", false, "Don't write query/response to database")
 
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
@@ -105,13 +110,14 @@ func Initialize() (*Options, error) {
 	viper.BindPFlag("model.temperature", pflag.Lookup("temperature"))
 	viper.BindPFlag("screen.width", pflag.Lookup("width"))
 	viper.BindPFlag("screen.height", pflag.Lookup("height"))
+	viper.BindPFlag("quiet", pflag.Lookup("quiet"))
+	viper.BindPFlag("no-record", pflag.Lookup("no-record"))
 
 	viper.BindPFlag("version", pflag.Lookup("version"))
 	viper.BindPFlag("full-version", pflag.Lookup("full-version"))
 
 	pflag.Parse()
 
-	// Handle version flags and bail if necessary
 	if handleVersionFlags() {
 		os.Exit(0)
 	}
@@ -141,6 +147,8 @@ func Initialize() (*Options, error) {
 		ScreenWidth:    min(viper.GetInt("screen.width"), MaxTermWidth) - widthPad,
 		ScreenHeight:   viper.GetInt("screen.height"),
 		TabWidth:       TabWidth,
+		Quiet:          viper.GetBool("quiet"),
+		NoRecord:       viper.GetBool("no-record"),
 	}, nil
 }
 
