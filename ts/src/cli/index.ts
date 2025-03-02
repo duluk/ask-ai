@@ -10,11 +10,21 @@ import { Message } from '../llm/types';
 import { wrapText, getTerminalWidth } from '../utils/linewrap';
 import { version } from '../../package.json';
 
+import { Logger } from '../utils/logger';
+import path from 'path';
+import os from 'os';
+
 // Environment variables
 dotenv.config();
 
 const config = loadConfig();
 const db = new Database(config.historyFile);
+
+// Initialize logger
+const xdgConfigPath = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+const logPath = path.join(xdgConfigPath, 'ask-ai', 'ask-ai.log');
+Logger.initialize(logPath);
+const logger = Logger.getInstance();
 
 const program = new Command();
 
@@ -31,6 +41,12 @@ program
   .option('--id <id>', 'Continue a specific conversation')
   .action(async (query, options) => {
     try {
+      logger.log('info', 'New query', {
+        model: options.model,
+        query,
+        conversationId: options.id
+      });
+
       if (options.search) {
         await handleSearch(options.search);
         return;
@@ -90,6 +106,13 @@ program
         response.usage?.promptTokens || 0,
         response.usage?.completionTokens || 0
       );
+
+      logger.log('info', 'AI response', {
+        conversationId,
+        query,
+        response: response.content,
+        tokens: response.usage
+      });
     } catch (error) {
       console.error('Error:', error);
     } finally {
