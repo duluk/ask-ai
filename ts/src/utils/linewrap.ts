@@ -1,66 +1,88 @@
-/**
- * Line wrapping utility functions
- */
+export class LineWrapper {
+    private currWidth: number = 0;
 
-export function wrapText(text: string, maxLength: number, tabWidth: number = 4): string {
-  if (!text) return '';
+    constructor(
+        private maxWidth: number,
+        private tabWidth: number = 4
+    ) { }
 
-  // Replace tabs with spaces for consistent measurement
-  const expandedText = text.replace(/\t/g, ' '.repeat(tabWidth));
+    wrap(text: string): string {
+        if (!text) return '';
 
-  // Split on newlines first to preserve paragraph breaks
-  const paragraphs = expandedText.split(/\r?\n/);
+        let result = '';
+        let i = 0;
 
-  // Process each paragraph
-  const wrappedParagraphs = paragraphs.map(paragraph => {
-    if (paragraph.length <= maxLength) {
-      return paragraph; // No wrapping needed
-    }
+        while (i < text.length) {
+            const char = text[i];
 
-    // Wrap this paragraph
-    const words = paragraph.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
+            switch (char) {
+                case '\n':
+                    result += '\n';
+                    this.currWidth = 0;
+                    break;
 
-    for (const word of words) {
-      // Check if adding this word would exceed the max length
-      if (currentLine.length + word.length + 1 > maxLength) {
-        // Line would be too long, start a new line
-        if (currentLine) {
-          lines.push(currentLine);
-          currentLine = word;
-        } else {
-          // The word itself is longer than the max length
-          lines.push(word);
-          currentLine = '';
+                case '\t':
+                    const spaces = ' '.repeat(this.tabWidth);
+                    result += spaces;
+                    this.currWidth += this.tabWidth;
+                    break;
+
+                case ' ':
+                    // Don't write a space at the beginning of a line
+                    if (this.currWidth !== 0) {
+                        result += ' ';
+                    }
+
+                    // Look ahead for next space to determine word length
+                    let nextWord = '';
+                    let j = i + 1;
+                    while (j < text.length && text[j] !== ' ' && text[j] !== '\n') {
+                        nextWord += text[j];
+                        j++;
+                    }
+
+                    // If adding this word would exceed maxWidth, add newline instead
+                    if (this.currWidth + nextWord.length + 1 >= this.maxWidth) {
+                        result += '\n';
+                        this.currWidth = 0;
+                    } else {
+                        this.currWidth++;
+                    }
+                    break;
+
+                default:
+                    result += char;
+                    this.currWidth++;
+
+                    // Add newline if we've reached maxWidth and next char is a space
+                    if (this.currWidth >= this.maxWidth &&
+                        i + 1 < text.length &&
+                        text[i + 1] === ' ') {
+                        result += '\n';
+                        this.currWidth = 0;
+                    }
+            }
+            i++;
         }
-      } else {
-        // Add word to current line
-        currentLine = currentLine
-          ? currentLine + ' ' + word
-          : word;
-      }
+
+        return result;
     }
+}
 
-    // Add the last line if there's anything left
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-
-    return lines.join('\n');
-  });
-
-  return wrappedParagraphs.join('\n');
+// For backwards compatibility, maintain the wrapText function
+export function wrapText(text: string, maxLength: number, tabWidth: number = 4): string {
+    const wrapper = new LineWrapper(maxLength, tabWidth);
+    return wrapper.wrap(text);
 }
 
 export function getTerminalWidth(): number {
-  // Default width if we can't determine actual width
-  const DEFAULT_WIDTH = 80;
+    // Default width if we can't determine actual width
+    const DEFAULT_WIDTH = 80;
 
-  try {
-    const width = process.stdout.columns;
-    return width || DEFAULT_WIDTH;
-  } catch (error) {
-    return DEFAULT_WIDTH;
-  }
+    try {
+        const width = process.stdout.columns;
+        return width || DEFAULT_WIDTH;
+    } catch (error) {
+        return DEFAULT_WIDTH;
+    }
 }
