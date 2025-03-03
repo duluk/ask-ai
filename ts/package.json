@@ -12,21 +12,30 @@
       "node_modules/sqlite3/**/*",
       "node_modules/axios/**/*"
     ],
-    "targets": ["node18-linux", "node18-macos", "node18-win"],
-    "scripts": ["dist/src/**/*.js"],
+    "targets": [
+      "node18-linux",
+      "node18-macos",
+      "node18-win"
+    ],
+    "scripts": [
+      "dist/src/**/*.js"
+    ],
     "outputPath": "dist/bin"
   },
   "scripts": {
     "build": "tsc",
+    "build:all": "npm run build && npm run package",
     "start": "node dist/src/cli/index.js",
     "dev": "ts-node src/cli/index.ts",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --write 'src/**/*.ts'",
     "postinstall": "npm run build",
     "package": "pkg . --no-bytecode",
-    "install-app": "npm run build && npm install -g",
-    "install-bin": "npm run package && cp dist/bin/ask-ai-ts-linux ~/.local/bin/ask-ai-ts"
+    "install": "npm run build && npm install -g",
+    "install-local": "npm run package && cp dist/bin/ask-ai-ts-linux ~/.local/bin/ask-ai-ts"
   },
   "author": "",
   "license": "MIT",
@@ -44,6 +53,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.4",
+    "@types/sqlite3": "^3.1.11",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "eslint": "^8.55.0",
