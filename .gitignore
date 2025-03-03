@@ -41,3 +41,6 @@ coverage/
 !package-lock.json
 !tsconfig.json
 !jest.config.js
+
+event.example.ts
+generator.example.ts
