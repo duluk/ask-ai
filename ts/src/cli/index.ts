@@ -56,6 +56,22 @@ async function recordResponse(
 
 const program = new Command();
 
+// Add tui command
+program
+    .command('tui')
+    .description('Launch the Terminal User Interface for interactive chat')
+    .option('-m, --model <model>', 'LLM model to use')
+    .action(async (options) => {
+        // We import and run the TUI here
+        try {
+            // We need to dynamically import to avoid circular dependencies
+            await import('../tui/index');
+        } catch (error) {
+            console.error('Failed to start TUI:', error);
+        }
+    });
+
+// Main command
 program
     .name('ask-ai')
     .description('CLI tool for asking LLMs questions without a GUI')

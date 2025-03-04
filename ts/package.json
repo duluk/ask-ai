@@ -27,6 +27,7 @@
     "build:all": "npm run build && npm run package",
     "start": "node dist/src/cli/index.js",
     "dev": "ts-node src/cli/index.ts",
+    "tui": "ts-node src/tui-entry.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -43,6 +44,7 @@
     "@anthropic-ai/sdk": "^0.18.0",
     "@google/generative-ai": "^0.2.1",
     "axios": "^1.6.2",
+    "blessed": "^0.1.81",
     "commander": "^11.1.0",
     "dotenv": "^16.3.1",
     "openai": "^4.0.0",
@@ -51,6 +53,7 @@
     "yaml": "^2.3.4"
   },
   "devDependencies": {
+    "@types/blessed": "^0.1.25",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.4",
     "@types/sqlite3": "^3.1.11",
