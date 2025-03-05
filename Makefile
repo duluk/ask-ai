@@ -8,6 +8,7 @@ endif
 BINARY_DIR := bin
 INSTALL_DIR := $(GOPATH)/bin
 MAIN_BINARY := ask-ai
+INSTALL_BINARY := ask-ai-go
 
 CMD_FILES := $(wildcard cmd/**/*.go)
 BIN_FILES := $(patsubst cmd/%/main.go,%,$(CMD_FILES))
@@ -65,7 +66,7 @@ run: $(BINARY_DIR)/$(MAIN_BINARY)
 install: all
 	@mkdir -p $(INSTALL_DIR)
 	@for app in $(BIN_FILES); do \
-		$(CP) $(CPFLAGS) $(BINARY_DIR)/$$app $(INSTALL_DIR); \
+		$(CP) $(CPFLAGS) $(BINARY_DIR)/$$app $(INSTALL_DIR)/$(INSTALL_BINARY); \
 		echo "Installed $$app to $(INSTALL_DIR)"; \
 	done
 
