@@ -65,7 +65,7 @@ program
         // We import and run the TUI here
         try {
             // We need to dynamically import to avoid circular dependencies
-            await import('../tui/index');
+            await import('../tui/index.js');
         } catch (error) {
             console.error('Failed to start TUI:', error);
         }
