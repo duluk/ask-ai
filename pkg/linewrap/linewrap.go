@@ -26,53 +26,89 @@ func NewLineWrapper(maxWidth, tabWidth int, lwWriter io.Writer) *LineWrapper {
 // then splitting it and printing the whole line at once.
 func (lw *LineWrapper) Write(data []byte) (n int, err error) {
 	var buffer bytes.Buffer
+	var wordBuffer bytes.Buffer
 
-	// Special case for single space - preserve it regardless of position
-	if len(data) == 1 && data[0] == ' ' {
-		buffer.WriteByte(' ')
-		lw.currWidth++
-		if lw.currWidth >= lw.maxWidth {
-			buffer.WriteByte('\n')
-			lw.currWidth = 0
-		}
-		lw.writer.Write(buffer.Bytes())
-		return 1, nil
-	}
-
-	for _, b := range data {
-		// Debug stuff I want to leave for future usage
-		// if b < 32 || b > 126 {
-		// 	fmt.Printf("Special character: %q (ASCII: %d)\n", b, b)
-		// } else {
-		// 	fmt.Printf("Character: %q (ASCII: %d)\n", b, b)
-		// }
+	for i := 0; i < len(data); i++ {
+		b := data[i]
 
 		switch b {
 		case '\n':
+			// Write any pending word
+			if wordBuffer.Len() > 0 {
+				buffer.Write(wordBuffer.Bytes())
+				wordBuffer.Reset()
+			}
 			buffer.WriteByte('\n')
 			lw.currWidth = 0
+
 		case '\t':
+			// Write any pending word
+			if wordBuffer.Len() > 0 {
+				buffer.Write(wordBuffer.Bytes())
+				wordBuffer.Reset()
+			}
 			spaces := strings.Repeat(" ", lw.tabWidth)
-			lw.currWidth += lw.tabWidth
 			buffer.WriteString(spaces)
+			lw.currWidth += lw.tabWidth
+
 		case ' ':
-			// MODIFIED: Always write spaces in streaming mode
-			buffer.WriteByte(' ')
+			// Write any pending word
+			if wordBuffer.Len() > 0 {
+				// Check if word would exceed line length
+				if lw.currWidth+wordBuffer.Len() > lw.maxWidth {
+					buffer.WriteByte('\n')
+					lw.currWidth = 0
+				}
+				buffer.Write(wordBuffer.Bytes())
+				lw.currWidth += wordBuffer.Len()
+				wordBuffer.Reset()
+			}
 
-			// We still need to count the width
-			lw.currWidth++
+			// Handle the space
+			if lw.currWidth > 0 {
+				buffer.WriteByte(' ')
+				lw.currWidth++
+			}
 
+			// If we're at max width, start new line
 			if lw.currWidth >= lw.maxWidth {
 				buffer.WriteByte('\n')
 				lw.currWidth = 0
 			}
+
 		default:
-			buffer.WriteByte(b)
-			lw.currWidth++
+			// Accumulate characters into word buffer
+			wordBuffer.WriteByte(b)
+
+			// If this word alone exceeds max width, write it with a hyphen
+			if wordBuffer.Len() >= lw.maxWidth {
+				if lw.currWidth > 0 {
+					buffer.WriteByte('\n')
+				}
+				buffer.Write(wordBuffer.Bytes()[:lw.maxWidth-1])
+				buffer.WriteByte('-')
+				buffer.WriteByte('\n')
+				wordBuffer.Reset()
+				wordBuffer.Write(data[i-wordBuffer.Len()+lw.maxWidth-1 : i+1])
+				lw.currWidth = 0
+			}
 		}
 	}
 
-	lw.writer.Write(buffer.Bytes())
+	// Write any remaining word
+	if wordBuffer.Len() > 0 {
+		if lw.currWidth+wordBuffer.Len() > lw.maxWidth {
+			buffer.WriteByte('\n')
+			lw.currWidth = 0
+		}
+		buffer.Write(wordBuffer.Bytes())
+	}
 
+	lw.writer.Write(buffer.Bytes())
 	return len(data), nil
+}
+
+// isPunctuation returns true if the byte represents a punctuation character
+func isPunctuation(b byte) bool {
+	return strings.ContainsRune(",.!?;:)", rune(b))
 }
