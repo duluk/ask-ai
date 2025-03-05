@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -33,6 +34,8 @@ type TUI struct {
 	client         LLM.Client
 	messages       []LLM.LLMConversations
 	uiMutex        sync.Mutex
+	buffer         strings.Builder
+	responseLines  int
 }
 
 // NewTUI creates a new TUI instance
@@ -69,6 +72,8 @@ func NewTUI(opts *config.Options, db *database.ChatDB, log *os.File) *TUI {
 		log:            log,
 		model:          opts.Model,
 		conversationID: 0,
+		buffer:         strings.Builder{},
+		responseLines:  0,
 	}
 
 	// Set up layout
@@ -381,24 +386,73 @@ func (t *TUI) appendText(text string) {
 
 // appendTextNoNewline adds text without adding a newline and scrolls to the bottom
 func (t *TUI) appendTextNoNewline(text string) {
-	// Skip the wrapping process entirely if the text is just a space
-	// This ensures spaces are preserved during streaming
-	if text == " " {
+	if strings.Contains(text, "\n") {
+		// Handle newlines by splitting the text
+		lines := strings.Split(text, "\n")
+
+		// Handle first part with buffer
+		t.buffer.WriteString(lines[0])
+
 		t.app.QueueUpdateDraw(func() {
-			t.outputBox.Write([]byte(" "))
+			if t.responseLines == 0 {
+				t.outputBox.Write([]byte(t.buffer.String()))
+				t.responseLines++
+			} else {
+				// Update last line with buffer content
+				currentContent := t.outputBox.GetText(true)
+				lines := strings.Split(currentContent, "\n")
+				lines[len(lines)-1] = lines[len(lines)-1] + t.buffer.String()
+				t.outputBox.SetText(strings.Join(lines, "\n"))
+			}
 			t.outputBox.ScrollToEnd()
 		})
-		return
+
+		// Reset buffer
+		t.buffer.Reset()
+
+		// Handle remaining lines
+		for i := 1; i < len(lines); i++ {
+			t.outputBox.Write([]byte(lines[i]))
+			t.responseLines++
+		}
+	} else {
+		// Add to buffer
+		t.buffer.WriteString(text)
+
+		// Check if we should flush buffer (on sentence endings or length)
+		if strings.ContainsAny(t.buffer.String(), ".!?") || t.buffer.Len() >= 30 {
+			var wrappedBuffer bytes.Buffer
+			wrapper := linewrap.NewLineWrapper(t.opts.ScreenWidth, t.opts.TabWidth, &wrappedBuffer)
+			wrapper.Write([]byte(t.buffer.String()))
+			wrappedText := wrappedBuffer.String()
+
+			t.app.QueueUpdateDraw(func() {
+				if t.responseLines == 0 {
+					t.outputBox.Write([]byte(wrappedText))
+					t.responseLines++
+				} else {
+					// Update last line
+					currentContent := t.outputBox.GetText(true)
+					lines := strings.Split(currentContent, "\n")
+					lastLine := lines[len(lines)-1]
+
+					if len(lastLine)+len(wrappedText) > t.opts.ScreenWidth {
+						// Start new line
+						t.outputBox.Write([]byte("\n" + wrappedText))
+						t.responseLines++
+					} else {
+						// Append to current line
+						lines[len(lines)-1] = lastLine + wrappedText
+						t.outputBox.SetText(strings.Join(lines, "\n"))
+					}
+				}
+				t.outputBox.ScrollToEnd()
+			})
+
+			// Reset buffer
+			t.buffer.Reset()
+		}
 	}
-
-	var wrappedText strings.Builder
-	wrapper := linewrap.NewLineWrapper(t.opts.ScreenWidth, t.opts.TabWidth, &wrappedText)
-	wrapper.Write([]byte(text))
-
-	t.app.QueueUpdateDraw(func() {
-		t.outputBox.Write([]byte(wrappedText.String()))
-		t.outputBox.ScrollToEnd()
-	})
 }
 
 // updateStatusBar updates the status bar with current information
