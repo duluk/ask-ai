@@ -13,6 +13,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/LLM"
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
+	"github.com/duluk/ask-ai/pkg/tui"
 )
 
 // I'm probably writing "Ruby Go"...
@@ -34,6 +35,15 @@ func main() {
 	if err != nil {
 		fmt.Println("Error creating log directory: ", err)
 		os.Exit(1)
+	}
+
+	// Check if user wants to run the TUI
+	if opts.UseTUI {
+		if err := runTUI(opts); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to run TUI: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	var log_fd *os.File
@@ -167,6 +177,56 @@ func main() {
 			clientArgs.Context = promptContext
 		}
 	}
+}
+
+func runTUI(opts *config.Options) error {
+	fmt.Println("Starting TUI mode...")
+
+	// Initialize and run the TUI
+	ui := tui.NewTUI(opts, nil, nil)
+	fmt.Println("TUI instance created")
+
+	// Open log file
+	fmt.Println("Opening log file:", opts.LogFileName)
+	logFd, err := os.OpenFile(opts.LogFileName, os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		fmt.Println("Error with chat log file: ", err)
+		os.Exit(1)
+	}
+	defer logFd.Close()
+	fmt.Println("Log file opened successfully")
+
+	// Initialize database
+	fmt.Println("Opening database:", opts.DBFileName)
+	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
+	if err != nil {
+		fmt.Println("Error opening database: ", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+	fmt.Println("Database initialized successfully")
+
+	// Set the log and db on the TUI
+	ui.SetLogFile(logFd)
+	ui.SetDatabase(db)
+	fmt.Println("Log and DB set on TUI")
+
+	// Initialize and run the TUI
+	fmt.Println("Initializing TUI...")
+	if err := ui.Initialize(); err != nil {
+		fmt.Println("Error initializing TUI: ", err)
+		os.Exit(1)
+	}
+	fmt.Println("TUI initialized successfully, launching UI...")
+
+	// // This is typically where it hangs - in the Run() call
+	// err = ui.Run()
+	// if err != nil {
+	// 	fmt.Println("Error running TUI: ", err)
+	// 	os.Exit(1)
+	// }
+
+	return ui.Run()
 }
 
 func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB) {

@@ -74,3 +74,8 @@ func (cs *DeepSeek) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientRe
 
 	return r, nil
 }
+
+// StreamChat implements streaming response for DeepSeek
+func (cs *DeepSeek) StreamChat(args ClientArgs, termWidth int, tabWidth int, callback func(chunk string)) (ClientResponse, error) {
+	return DefaultStreamChat(cs, args, termWidth, tabWidth, callback)
+}

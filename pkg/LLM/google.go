@@ -97,3 +97,47 @@ func (cs *Google) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 
 	return r, nil
 }
+
+// StreamChat implements streaming response for Google's Gemini model
+func (cs *Google) StreamChat(args ClientArgs, termWidth int, tabWidth int, callback func(chunk string)) (ClientResponse, error) {
+	client := cs.Client
+	ctx := cs.Context
+
+	model := client.GenerativeModel("gemini-1.5-pro")
+	model.SetTemperature(*args.Temperature)
+	model.SetMaxOutputTokens(int32(*args.MaxTokens))
+	model.SystemInstruction = genai.NewUserContent(genai.Text(*args.SystemPrompt))
+
+	var respStr string
+	var usage *genai.UsageMetadata
+	prompt := buildPrompt(args.Context, *args.Prompt)
+	myInputEstimate := EstimateTokens(prompt + *args.SystemPrompt)
+
+	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
+
+	for {
+		resp, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return ClientResponse{}, err
+		}
+
+		chunk := fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
+		callback(chunk)
+		respStr += chunk
+		// r := fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
+		// respStr += r
+		// callback(r)
+
+		usage = resp.UsageMetadata
+	}
+
+	return ClientResponse{
+		Text:         respStr,
+		InputTokens:  usage.PromptTokenCount,
+		OutputTokens: usage.CandidatesTokenCount,
+		MyEstInput:   myInputEstimate,
+	}, nil
+}
