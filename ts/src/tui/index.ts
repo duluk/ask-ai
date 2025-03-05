@@ -114,12 +114,13 @@ let modelName: string = getDefaultModel(config);
 // Add a message to the output box
 function appendMessage(role: string, content: string): void {
     if (role === 'user') {
-        outputBox.pushLine('');
         outputBox.pushLine('You:');
         outputBox.pushLine(content);
+        outputBox.pushLine('');
     } else {
         outputBox.pushLine('AI:');
         outputBox.pushLine(content);
+        outputBox.pushLine('');
     }
     outputBox.setScrollPerc(100);
     screen.render();
