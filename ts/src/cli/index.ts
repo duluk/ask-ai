@@ -86,11 +86,11 @@ program
     .command('tui')
     .description('Launch the Terminal User Interface for interactive chat')
     .option('-m, --model <model>', 'LLM model to use')
-    .action(async (options) => {
-        // We import and run the TUI here
+    .action(async (cmdOptions, cmd) => {
         try {
-            // We need to dynamically import to avoid circular dependencies
-            await import('../tui/index.js');
+            const { startTUI } = await import('../tui/index.js');
+            const model = cmdOptions.model || program.opts().model;
+            await startTUI({ model });
         } catch (error) {
             console.error('Failed to start TUI:', error);
         }
