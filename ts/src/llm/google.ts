@@ -1,5 +1,6 @@
 import { BaseLLMClient } from './base';
 import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
+import { LLMStreamEmitter } from './base';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 
 export class GoogleClient extends BaseLLMClient {
@@ -17,7 +18,72 @@ export class GoogleClient extends BaseLLMClient {
     }
 
     sendStream(messages: Message[], config?: Partial<LLMConfig>): StreamingResponse {
-        throw new Error('Streaming not implemented for GoogleClient');
+        const emitter = new LLMStreamEmitter();
+
+        if (!this.client || !this.model) {
+            process.nextTick(() => {
+                emitter.emit('error', new Error('Google client not initialized. API key may be missing.'));
+            });
+            return emitter;
+        }
+
+        const model = this.model;
+
+        const mergedConfig = {
+            ...this.config,
+            ...config
+        };
+
+        // Start the streaming process
+        (async () => {
+            try {
+                // Format the prompt for streaming
+                const prompt = messages[messages.length - 1].content;
+
+                // Get system prompt if present
+                const systemMessage = messages.find(msg => msg.role === 'system');
+
+                // Create generation config
+                const generationConfig = {
+                    maxOutputTokens: mergedConfig.maxTokens,
+                    temperature: mergedConfig.temperature
+                };
+
+                // Stream the response
+                const result = await model.generateContentStream({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig,
+                    ...(systemMessage && {
+                        systemPrompt: systemMessage.content
+                    })
+                });
+
+                let fullContent = '';
+                for await (const response of result.stream) {
+                    const text = response.text();
+                    if (text) {
+                        fullContent += text;
+                        emitter.emit('data', text);
+                    }
+                }
+
+                // Emit the final response
+                emitter.emit('done', {
+                    content: fullContent,
+                    usage: {
+                        promptTokens: undefined,
+                        completionTokens: undefined,
+                        totalTokens: undefined
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error in Google stream:', error);
+                emitter.emit('error', error);
+            }
+        })();
+
+        return emitter;
     }
 
     async send(messages: Message[], config?: Partial<LLMConfig>): Promise<LLMResponse> {
