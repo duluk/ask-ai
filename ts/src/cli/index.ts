@@ -56,6 +56,31 @@ async function recordResponse(
 
 const program = new Command();
 
+/*
+In Commander.js:
+
+- `program.opts()` gets options from the root program/command level
+- `cmd.parent.opts()` gets options from the immediate parent command of the current subcommand
+
+Here's an example to illustrate:
+
+program
+    .option('--global-flag <value>', 'Global flag')  // Root level option
+
+program
+    .command('parent')
+    .option('--parent-flag <value>', 'Parent flag')  // Parent command option
+    .command('child')                                // Subcommand
+    .option('--child-flag <value>', 'Child flag')    // Child command option
+    .action((childOptions, cmd) => {
+        console.log({
+            programOpts: program.opts(),        // Gets { globalFlag: value }
+            parentOpts: cmd.parent.opts(),      // Gets { parentFlag: value }
+            childOpts: childOptions             // Gets { childFlag: value }
+        });
+    });
+*/
+
 // Add tui command
 program
     .command('tui')
