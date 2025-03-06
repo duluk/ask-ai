@@ -17,6 +17,13 @@ export interface StreamingResponse extends EventEmitter {
     on(event: 'data', listener: (chunk: string) => void): this;
     on(event: 'done', listener: (response: LLMResponse) => void): this;
     on(event: 'error', listener: (error: Error) => void): this;
+    /* Other potential events to handle:
+      - end
+      - timeout
+      - close
+      - abort
+      - etc.
+    */
 }
 
 export interface LLMClient {
