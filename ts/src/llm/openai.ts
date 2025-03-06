@@ -81,8 +81,11 @@ export class OpenAIClient extends BaseLLMClient {
                 });
 
                 let fullContent = '';
+                let usage: any = undefined;
                 for await (const chunk of stream) {
                     const content = chunk.choices[0]?.delta?.content || '';
+                    usage = chunk.usage;
+
                     fullContent += content;
                     emitter.emit('data', content);
                 }
@@ -90,7 +93,7 @@ export class OpenAIClient extends BaseLLMClient {
                 emitter.emit('done', {
                     content: fullContent,
                     finishReason: 'stop',
-                    usage: undefined // Token usage not available in streaming mode
+                    usage: usage || undefined
                 });
             } catch (error) {
                 emitter.emit('error', error);
