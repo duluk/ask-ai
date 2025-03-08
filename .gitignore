@@ -35,6 +35,7 @@ coverage/
 
 # TypeScript files - but not in the blocked directories above
 !*.ts
+!*.tsx
 !*.js
 !*.json
 !package.json
