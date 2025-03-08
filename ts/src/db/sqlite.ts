@@ -25,7 +25,8 @@ export class Database {
     private initialized: boolean = false;
 
     constructor(dbPath?: string) {
-        const defaultPath = path.join(os.homedir(), '.config', 'ask-ai', 'history.db');
+        const xdgConfigPath = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+        const defaultPath = path.join(xdgConfigPath, 'ask-ai', 'history.db');
         const finalPath = dbPath || defaultPath;
 
         // Ensure directory exists
