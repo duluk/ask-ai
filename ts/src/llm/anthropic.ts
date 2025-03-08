@@ -3,6 +3,8 @@ import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
 import { LLMStreamEmitter } from './base';
 import Anthropic from '@anthropic-ai/sdk';
 
+import { Logger } from '../utils/logger';
+
 export class AnthropicClient extends BaseLLMClient {
     private client: Anthropic | null = null;
 
@@ -53,6 +55,7 @@ export class AnthropicClient extends BaseLLMClient {
 
     sendStream(messages: Message[], config?: Partial<LLMConfig>): StreamingResponse {
         const emitter = new LLMStreamEmitter();
+        const logger = Logger.getInstance();
 
         if (!this.client) {
             process.nextTick(() => {
@@ -86,7 +89,7 @@ export class AnthropicClient extends BaseLLMClient {
                 // Make sure max_tokens is a number and not undefined
                 const maxTokens = mergedConfig.maxTokens || 1024;
 
-                const stream = await client.messages.stream({
+                const stream = client.messages.stream({
                     model: mergedConfig.modelName,
                     messages: formattedMessages,
                     system: systemPrompt,
@@ -106,19 +109,22 @@ export class AnthropicClient extends BaseLLMClient {
                         const text = chunk.delta?.text || '';
                         fullContent += text;
                         emitter.emit('data', text);
+                        logger.log('debug', 'Anthropic chunk:', { chunk: chunk });
                     }
 
-                    // Update token usage if available
-                    // if (chunk.usage) {
-                    //     usage = {
-                    //         promptTokens: chunk.usage.input_tokens,
-                    //         completionTokens: chunk.usage.output_tokens,
-                    //         totalTokens: chunk.usage.input_tokens + chunk.usage.output_tokens
-                    //     };
-                    // }
+                    if (chunk.type === 'message_delta') {
+                        usage.completionTokens += chunk.usage?.output_tokens || 0;
+                        logger.log('debug', 'Anthropic usage:', { chunk: chunk });
+                        // usage = {
+                        //     promptTokens: chunk.usage?.input_tokens || 0,
+                        //     completionTokens: chunk.usage?.output_tokens || 0,
+                        //     totalTokens: (chunk.usage?.input_tokens || 0) + (chunk.usage?.output_tokens || 0)
+                        // };
+                    }
                 }
 
                 // Emit the final response with complete content and usage statistics
+                logger.log('debug', 'Anthropic final usage:', { usage: usage });
                 emitter.emit('done', {
                     content: fullContent,
                     usage: usage
