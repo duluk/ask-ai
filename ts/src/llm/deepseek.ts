@@ -1,5 +1,5 @@
-import { BaseLLMClient } from './base';
-import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
+import { BaseLLMClient, LLMStreamEmitter } from './base.js';
+import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types.js';
 import OpenAI from 'openai';
 
 // DeepSeek uses the OpenAI API format

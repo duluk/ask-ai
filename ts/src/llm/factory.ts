@@ -1,9 +1,9 @@
-import { LLMClient, LLMConfig, ModelProvider } from './types';
-import { OpenAIClient } from './openai';
-import { AnthropicClient } from './anthropic';
-import { GoogleClient } from './google';
-import { OllamaClient } from './ollama';
-import { DeepSeekClient } from './deepseek';
+import { LLMConfig, LLMClient, ModelProvider } from './types.js';
+import { OpenAIClient } from './openai.js';
+import { AnthropicClient } from './anthropic.js';
+import { GoogleClient } from './google.js';
+import { OllamaClient } from './ollama.js';
+import { DeepSeekClient } from './deepseek.js';
 
 /**
  * Creates and returns the appropriate LLM client based on the model name

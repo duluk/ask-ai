@@ -5,15 +5,20 @@
  * This avoids the top-level await issue in yoga-wasm-web
  */
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const readline = require('readline');
-const util = require('util');
-const { spawn } = require('child_process');
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import readline from 'node:readline';
+import util from 'node:util';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+// Get __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import our compiled modules
-const config = require('./dist/src/config');
+import * as config from './dist/src/config/index.js';
 
 // Terminal colors
 const colors = {
@@ -171,9 +176,11 @@ class SimpleChatTUI {
       // Start a child process to get the answer
       // This avoids the module loading issues
       const child = spawn('node', [
+        '--input-type=module',
         '-e',
         `
-        const { createLLMClient } = require('./dist/src/llm/factory');
+        import { createLLMClient } from './dist/src/llm/factory.js';
+        
         const llmClient = createLLMClient("${this.modelName}");
         const message = { role: "user", content: ${JSON.stringify(query)} };
         

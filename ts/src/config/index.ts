@@ -1,9 +1,9 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import yaml from 'yaml';
-import os from 'os';
+import os from 'node:os';
 
-import { Logger } from '../utils/logger';
+import { Logger } from '../utils/logger.js';
 
 export interface Config {
     defaultModel: string;

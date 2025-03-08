@@ -1,4 +1,4 @@
-import { loadConfig, Config } from '../../src/config';
+import { loadConfig, Config } from '../../src/config/index.js';
 import fs from 'fs';
 import yaml from 'yaml';
 

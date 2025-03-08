@@ -1,16 +1,16 @@
 // Re-export all the components for easier imports
 
 // LLM Clients
-export * from './llm';
+export * from './llm/index.js';
 
 // Config
-export * from './config';
+export * from './config/index.js';
 
 // Database
-export { Database } from './db/sqlite';
+export * from './db/sqlite.js';
 
 // Utils
-export { wrapText, getTerminalWidth } from './utils/linewrap';
+export * from './utils/linewrap.js';
 
 // CLI
 // We don't export CLI by default as it's meant to be run directly

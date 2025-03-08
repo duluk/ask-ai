@@ -1,5 +1,5 @@
-import { OpenAIClient } from '@/llm/openai';
-import { LLMConfig, Message } from '@/llm/types';
+import { OpenAIClient } from '@/llm/openai.js';
+import { LLMConfig, Message } from '@/llm/types.js';
 import OpenAI from 'openai';
 
 jest.mock('openai');

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { loadConfig, getModelName, getDefaultModel } from '../config';
-import { Database } from '../db/sqlite';
-import { Logger } from '../utils/logger';
-import path from 'path';
-import os from 'os';
+import { loadConfig, getModelName, getDefaultModel } from '../config/index.js';
+import { Database } from '../db/sqlite.js';
+import { Logger } from '../utils/logger.js';
+import path from 'node:path';
+import os from 'node:os';
 
 interface TUIOptions {
     model?: string;
@@ -33,7 +33,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
                 : getDefaultModel(config);
 
             // Use dynamic import to load the components
-            import('./ink-app').then(({ startInkApp }) => {
+            import('./ink-app.js').then(({ startInkApp }) => {
                 // Start the app
                 startInkApp(config, db, modelName, logger)
                     .then(resolve)

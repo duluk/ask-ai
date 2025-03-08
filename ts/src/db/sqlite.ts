@@ -1,8 +1,8 @@
 import sqlite3 from 'sqlite3';
-import { Message } from '../llm/types';
-import path from 'path';
-import fs from 'fs';
-import os from 'os';
+import { Message } from '../llm/types.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
 
 export interface Conversation {
     id: number;

@@ -2,17 +2,23 @@
 
 import { Command } from 'commander';
 import dotenv from 'dotenv';
-import readline from 'readline';
-import { loadConfig, getModelName, getDefaultModel } from '../config';
-import { Database } from '../db/sqlite';
-import { createLLMClient } from '../llm/factory';
-import { Message } from '../llm/types';
-import { wrapText, getTerminalWidth, LineWrapper } from '../utils/linewrap';
-import { version } from '../../package.json';
+import readline from 'node:readline';
+import { loadConfig, getModelName, getDefaultModel } from '../config/index.js';
+import { Database } from '../db/sqlite.js';
+import { createLLMClient } from '../llm/factory.js';
+import { ModelProvider, Message } from '../llm/types.js';
+import { wrapText, LineWrapper, getTerminalWidth } from '../utils/linewrap.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import os from 'node:os';
+import { Logger } from '../utils/logger.js';
 
-import { Logger } from '../utils/logger';
-import path from 'path';
-import os from 'os';
+// Read package.json dynamically instead of using import assertion
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const packageJsonPath = path.resolve(__dirname, '../../package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 
 dotenv.config();
 
@@ -105,7 +111,7 @@ program
 program
     .name('ask-ai')
     .description('CLI tool for asking LLMs questions without a GUI')
-    .version(version)
+    .version(packageJson.version)
     .argument('[query]', 'Question to ask the AI model')
     .option('-m, --model <model>', 'LLM model to use')
     .option('-c, --continue', 'Continue the last conversation')

@@ -1,4 +1,4 @@
-import { wrapText, getTerminalWidth } from '../../src/utils/linewrap';
+import { wrapText, getTerminalWidth } from '../../src/utils/linewrap.js';
 
 describe('Line Wrapping', () => {
     it('should wrap text at specified width', () => {

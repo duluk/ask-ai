@@ -1,4 +1,4 @@
-import { Database } from '../../src/db/sqlite';
+import { Database } from '../../src/db/sqlite.js';
 import sqlite3 from 'sqlite3';
 
 jest.mock('sqlite3');

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // This file serves as a direct entry point for the TUI
-import { startTUI } from './tui/index';
+import { startTUI } from './tui/index.js';
 
 // Create an async function to wrap our code and run it immediately
 (async function runTUI() {

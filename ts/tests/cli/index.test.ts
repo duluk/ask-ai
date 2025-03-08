@@ -1,10 +1,10 @@
-import { Database } from '../../src/db/sqlite';
-import { Logger } from '../../src/utils/logger';
-import { loadConfig } from '../../src/config';
+import { Database } from '../../src/db/sqlite.js';
+import { Logger } from '../../src/utils/logger.js';
+import { loadConfig } from '../../src/config/index.js';
 
-jest.mock('../../src/db/sqlite');
-jest.mock('../../src/utils/logger');
-jest.mock('../../src/config');
+jest.mock('../../src/db/sqlite.js');
+jest.mock('../../src/utils/logger.js');
+jest.mock('../../src/config/index.js');
 
 describe('CLI', () => {
     beforeEach(() => {

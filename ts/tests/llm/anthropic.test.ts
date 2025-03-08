@@ -1,5 +1,5 @@
-import { AnthropicClient } from '@/llm/anthropic';
-import { LLMConfig, Message } from '@/llm/types';
+import { AnthropicClient } from '@/llm/anthropic.js';
+import { LLMConfig, Message } from '@/llm/types.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 jest.mock('@anthropic-ai/sdk');

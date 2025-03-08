@@ -1,10 +1,10 @@
-import { createLLMClient } from '@/llm/factory';
-import { OpenAIClient } from '@/llm/openai';
-import { AnthropicClient } from '@/llm/anthropic';
-import { ModelProvider } from '@/llm/types';
+import { createLLMClient } from '@/llm/factory.js';
+import { OpenAIClient } from '@/llm/openai.js';
+import { AnthropicClient } from '@/llm/anthropic.js';
+import { ModelProvider } from '@/llm/types.js';
 
-jest.mock('@/llm/openai');
-jest.mock('@/llm/anthropic');
+jest.mock('@/llm/openai.js');
+jest.mock('@/llm/anthropic.js');
 
 describe('LLM Factory', () => {
   beforeEach(() => {

@@ -1,4 +1,4 @@
-import { Logger } from '../../src/utils/logger';
+import { Logger } from '../../src/utils/logger.js';
 import path from 'path';
 import fs from 'fs';
 

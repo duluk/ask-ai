@@ -1,7 +1,7 @@
-import { loadConfig } from '../config';
+import { Config } from '../config/index.js';
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export class Logger {
     private static instance: Logger;

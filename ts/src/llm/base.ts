@@ -1,5 +1,8 @@
-import { EventEmitter } from 'events';
-import { LLMClient, LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
+import { EventEmitter } from 'node:events';
+import { LLMConfig, Message, LLMResponse, LLMClient, StreamingResponse } from './types.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
 
 export class LLMStreamEmitter extends EventEmitter implements StreamingResponse { }
 
@@ -38,13 +41,9 @@ export abstract class BaseLLMClient implements LLMClient {
             return envKey;
         }
 
-        const homeDir = process.env.HOME || process.env.USERPROFILE;
-        const path = require('path');
+        const homeDir = os.homedir();
         const configDir = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
         if (configDir) {
-            const fs = require('fs');
-            const path = require('path');
-
             const keyPath = path.join(configDir, 'ask-ai', `${provider.toLowerCase()}-api-key`);
             try {
                 if (fs.existsSync(keyPath)) {

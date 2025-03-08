@@ -1,6 +1,5 @@
-import { BaseLLMClient } from './base';
-import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
-import { LLMStreamEmitter } from './base';
+import { BaseLLMClient, LLMStreamEmitter } from './base.js';
+import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types.js';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 
 export class GoogleClient extends BaseLLMClient {

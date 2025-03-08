@@ -1,9 +1,7 @@
-import { BaseLLMClient } from './base';
-import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
-// Is this the correct way to do this?
-import { LLMStreamEmitter } from './base';
+import { BaseLLMClient, LLMStreamEmitter } from './base.js';
+import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types.js';
 
-import { Logger } from '../utils/logger';
+import { Logger } from '../utils/logger.js';
 
 import OpenAI from 'openai';
 

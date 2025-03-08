@@ -1,9 +1,8 @@
-import { BaseLLMClient } from './base';
-import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
-import { LLMStreamEmitter } from './base';
+import { BaseLLMClient, LLMStreamEmitter } from './base.js';
+import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types.js';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { Logger } from '../utils/logger';
+import { Logger } from '../utils/logger.js';
 
 export class AnthropicClient extends BaseLLMClient {
     private client: Anthropic | null = null;
