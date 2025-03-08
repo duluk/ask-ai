@@ -21,7 +21,9 @@
     "allowSyntheticDefaultImports": true
   },
   "ts-node": {
-    "transpileOnly": true
+    "transpileOnly": true,
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]
