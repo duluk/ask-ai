@@ -7,22 +7,22 @@ import { AskAITUI } from './components.js';
  * Entry point for the Ink app that handles JSX rendering
  */
 export async function startInkApp(
-    config: any, 
-    db: Database, 
-    modelName: string, 
+    config: any,
+    db: Database,
+    modelName: string,
     logger: any
 ): Promise<void> {
     try {
         // Render the Ink app with Ink 4.x API
         const { waitUntilExit } = render(
-            <AskAITUI 
-                config={config} 
-                db={db} 
-                modelName={modelName} 
-                logger={logger} 
+            <AskAITUI
+                config={config}
+                db={db}
+                modelName={modelName}
+                logger={logger}
             />
         );
-        
+
         // Wait for the app to exit
         await waitUntilExit();
     } catch (error) {
