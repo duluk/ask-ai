@@ -16,10 +16,10 @@ export async function startInkApp(
         // Render the Ink app with Ink 4.x API
         const { waitUntilExit } = render(
             <AskAITUI
-                config={config}
+                // config={config}
+                // logger={logger}
                 db={db}
                 modelName={modelName}
-                logger={logger}
             />
         );
 

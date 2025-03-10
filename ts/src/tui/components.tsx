@@ -1,9 +1,10 @@
-import React, { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 // Import ink path without js extension for CommonJS mode
 import { Box, Text, useInput, useApp } from 'ink';
+import Spinner from 'ink-spinner';
 import { Database } from '../db/sqlite.js';
 import { createLLMClient } from '../llm/factory.js';
-import { Message, ModelProvider } from '../llm/types.js';
+import { Message } from '../llm/types.js';
 
 // Define message type
 export interface ChatMessage {
@@ -18,29 +19,33 @@ interface ConversationOutputProps {
 
 // Component for displaying conversation messages
 export const ConversationOutput: FC<ConversationOutputProps> = ({ messages, isTyping }) => {
+    // Remove duplicate scrolling logic - we'll rely on the parent component
+
+
     return (
         <Box
             flexDirection="column"
-            height="100%"
             borderStyle="single"
             borderColor="blue"
             flexGrow={1}
-            padding={1}
-            overflow="auto"
+            padding={0}
         >
-            {messages.map((msg, index) => (
-                <Box key={index} flexDirection="column" marginBottom={1}>
-                    <Text bold color={msg.role === 'user' ? 'green' : 'cyan'}>
-                        {msg.role === 'user' ? 'You:' : msg.role === 'assistant' ? 'AI:' : 'System:'}
-                    </Text>
-                    <Text wrap="wrap" paddingLeft={1}>{msg.content}</Text>
-                </Box>
-            ))}
-            {isTyping && (
-                <Box>
-                    <Text color="cyan">AI is typing...</Text>
-                </Box>
-            )}
+            <Box flexDirection="column" padding={1} flexGrow={1}>
+                {messages.map((msg, index) => (
+                    <Box key={index} flexDirection="column" marginBottom={1}>
+                        <Text bold color={msg.role === 'user' ? 'green' : 'cyan'}>
+                            {msg.role === 'user' ? 'You:' : msg.role === 'assistant' ? 'AI:' : 'System:'}
+                        </Text>
+                        <Text wrap="wrap" paddingLeft={1}>{msg.content}</Text>
+                    </Box>
+                ))}
+                {isTyping && (
+                    <Box>
+                        <Spinner type="circleHalves" />
+                        <Text color="cyan"> AI is typing...</Text>
+                    </Box>
+                )}
+            </Box>
         </Box>
     );
 };
@@ -48,9 +53,15 @@ export const ConversationOutput: FC<ConversationOutputProps> = ({ messages, isTy
 interface StatusLineAreaProps {
     isTyping: boolean;
     modelName: string;
+    totalMessages: number;
 }
 
-export const StatusLineArea: FC<StatusLineAreaProps> = ({ isTyping, modelName }) => {
+export const StatusLineArea: FC<StatusLineAreaProps> = ({
+    isTyping,
+    modelName,
+    totalMessages
+}) => {
+
     return (
         <Box
             flexDirection="row"
@@ -63,7 +74,6 @@ export const StatusLineArea: FC<StatusLineAreaProps> = ({ isTyping, modelName })
                 paddingRight={1}
             >
                 <Text
-                    // backgroundColor="blue"
                     color="yellow"
                     wrap="truncate"
                     paddingLeft={1}
@@ -71,63 +81,70 @@ export const StatusLineArea: FC<StatusLineAreaProps> = ({ isTyping, modelName })
                 >
                     {isTyping
                         ? 'AI is thinking...'
-                        : `Model: ${modelName} | Use Ctrl+N for newline | Press Esc to quit`}
+                        : `Model: ${modelName} | Total messages: ${totalMessages} | Ctrl+N: Newline | Esc: Quit`}
                 </Text>
             </Box>
-        </Box >
+        </Box>
     );
 };
 
 interface InputAreaProps {
     value: string;
-    onChange: (value: string) => void;
-    onSubmit: () => void;
+    // onChange: (value: string) => void;
+    // onSubmit: () => void;
     isTyping: boolean;
 }
 
 // Component for the input area
-export const InputArea: FC<InputAreaProps> = ({ value, onChange, onSubmit, isTyping }) => {
-    const { exit } = useApp();
+export const InputArea: FC<InputAreaProps> = ({ value, isTyping }) => {
+    // Add cursor blinking state
+    const [showCursor, setShowCursor] = useState<boolean>(true);
 
-    useInput((input: string, key) => {
-        if (key.escape) {
-            exit();
-        } else if (key.return) {
-            if (!isTyping && value.trim() !== '') {
-                onSubmit();
-            }
-        } else if (key.ctrl && input === 'n') {
-            onChange(value + '\n');
-        } else if (key.backspace || key.delete) {
-            onChange(value.slice(0, -1));
-        } else if (input && !key.ctrl && !key.meta) {
-            onChange(value + input);
+    // Create blinking cursor effect with optimized implementation
+    useEffect(() => {
+        if (isTyping) {
+            setShowCursor(false);
+            return;
         }
-    });
 
+        const timer = setInterval(() => {
+            setShowCursor(prev => !prev);
+        }, 500); // cursor blink rate in ms
+
+        return () => clearInterval(timer);
+    }, [isTyping]);
+
+    // ▁ or ▊ or █ can also be used for cursor
     return (
         <Box flexDirection="column" width="100%">
             <Box
                 borderStyle="single"
                 borderColor={isTyping ? "gray" : "green"}
                 minHeight={3}
-                alignItems="flex-end"
+                alignItems="flex-start"
+                paddingX={1}
             >
-                <Text>{value}</Text>
+                <Box flexDirection="row">
+                    <Text color={isTyping ? "gray" : "cyan"}>
+                        {value}
+                        {!isTyping && "⎸"}
+                    </Text>
+                </Box>
             </Box>
         </Box>
     );
 };
 
 interface AskAITUIProps {
-    config: any;
+    // config: any;
+    // logger: any;
     db: Database;
     modelName: string;
-    logger: any;
 }
 
 // Main TUI component
-export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) => {
+export const AskAITUI: FC<AskAITUIProps> = ({ db, modelName }) => {
+    const { exit } = useApp(); // Move this to the top level
     const [conversationId, setConversationId] = useState<number | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
@@ -138,6 +155,8 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
     const [input, setInput] = useState<string>('');
     const [isTyping, setIsTyping] = useState<boolean>(false);
     const [streamContent, setStreamContent] = useState<string>('');
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [scrollOffset, setScrollOffset] = useState(0);
 
     // Initialize conversation
     useEffect(() => {
@@ -145,6 +164,7 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
             try {
                 const id = await db.createConversation(modelName);
                 setConversationId(id);
+                setScrollOffset(0); // Reset scroll position
             } catch (error) {
                 setMessages(prev => [...prev, {
                     role: 'system',
@@ -160,6 +180,31 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
             db.close().catch(console.error);
         };
     }, [db, modelName]);
+
+    // Handle input submission
+    const handleSubmit = () => {
+        if (!isTyping && input.trim()) {
+            const query = input.trim();
+            setInput('');
+            sendMessage(query);
+        }
+    };
+
+    // Handle keyboard input for both scrolling and text input
+    useInput((input: string, key) => {
+        if (key.escape) {
+            exit();
+        } else if (key.return) {
+            handleSubmit();
+        } else if (key.ctrl && input === 'n') {
+            setInput(prev => prev + '\n');
+        } else if (key.backspace || key.delete) {
+            setInput(prev => prev.slice(0, -1));
+        } else if (!key.ctrl && !key.meta && !key.upArrow && !key.downArrow) {
+            // Simply append the input character without checking length
+            setInput(prev => prev + input);
+        }
+    });
 
     // Function to send a message to the AI
     const sendMessage = async (query: string) => {
@@ -192,11 +237,13 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
                 let fullResponse = '';
 
                 stream.on('data', (chunk) => {
+                    setIsStreaming(true);
                     fullResponse += chunk;
                     setStreamContent(fullResponse);
                 });
 
                 stream.on('done', async (response) => {
+                    setIsStreaming(false);
                     // Add AI response to UI
                     setMessages(prev => [
                         ...prev,
@@ -240,15 +287,6 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
         }
     };
 
-    // Handle input submission
-    const handleSubmit = () => {
-        if (!isTyping && input.trim()) {
-            const query = input.trim();
-            setInput('');
-            sendMessage(query);
-        }
-    };
-
     // Combined messages including streaming content
     const displayMessages = [
         ...messages,
@@ -257,7 +295,7 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
 
     return (
         <Box flexDirection="column" height="100%">
-            <Box flexGrow={1} minHeight={10}>
+            <Box>
                 <ConversationOutput
                     messages={displayMessages}
                     isTyping={isTyping && !streamContent}
@@ -266,13 +304,12 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
             <StatusLineArea
                 isTyping={isTyping}
                 modelName={modelName}
+                totalMessages={messages.length}
             />
             <InputArea
                 value={input}
-                onChange={setInput}
-                onSubmit={handleSubmit}
                 isTyping={isTyping}
             />
-        </Box >
+        </Box>
     );
 };

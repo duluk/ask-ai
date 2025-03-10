@@ -18,7 +18,12 @@ declare module 'ink' {
         paddingBottom?: number;
         paddingLeft?: number;
         paddingRight?: number;
+        paddingX?: number;
+        paddingY?: number;
         padding?: number;
+        position?: 'relative' | 'absolute';
+        right?: number;
+        top?: number;
         borderStyle?: 'single' | 'double' | 'round' | 'bold';
         borderColor?: string;
         height?: number | string;
