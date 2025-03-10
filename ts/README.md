@@ -11,6 +11,8 @@ npm install
 
 ## Usage
 
+### Command Line Interface
+
 ```bash
 # Build the TypeScript code
 npm run build
@@ -24,6 +26,40 @@ node dist/cli/index.js "What is the best chess opening for a beginner?"
 # Run in development mode
 npm run dev -- "What is the best chess opening for a beginner?"
 ```
+
+### Text User Interface (TUI)
+
+For a more interactive experience, use the TUI:
+
+```bash
+# Build and run the TUI
+npm run build
+npm run start:tui
+
+# Or run in development mode
+npm run dev:tui
+```
+
+The TUI includes:
+- An output box for viewing the conversation
+- A status line showing the current model and application state
+- An input box with Emacs-style keybindings
+- Support for slash commands
+
+#### TUI Keyboard Shortcuts
+
+- `Ctrl+C` - Exit the application
+- `Ctrl+A` - Move to beginning of line
+- `Ctrl+E` - Move to end of line
+- `Ctrl+U` - Clear the line
+- `Ctrl+W` - Delete word before cursor
+
+#### TUI Slash Commands
+
+- `/help` - Show help
+- `/exit` or `/quit` - Exit the application
+- `/model [name]` - Show or change the current model
+- `/clear` - Clear the current conversation
 
 ## Development
 

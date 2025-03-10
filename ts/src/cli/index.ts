@@ -81,26 +81,6 @@ program
     });
 */
 
-// Add tui command
-program
-    .command('tui')
-    .description('Launch the Terminal User Interface for interactive chat')
-    .option('-m, --model <model>', 'LLM model to use')
-    .option('--debug', 'Enable debug mode')
-    // 1st Argument to .action: options pased to the current command (ie tui)
-    // 2nd Argument: full command object, which includes the above options plus other things such as the app name and probably options passed to the app, before the sub command
-    .action(async (cmdOptions, _) => {
-        try {
-            const { startTUI } = await import('../tui/index.js');
-            const model = cmdOptions.model || program.opts().model;
-            const debug = cmdOptions.debug || program.opts().debug;
-            logger.log('debug', 'TUI options in main app:', { model, debug })
-            await startTUI({ model, debug });
-        } catch (error) {
-            console.error('Failed to start TUI:', error);
-        }
-    });
-
 // Main command
 program
     .name('ask-ai')
