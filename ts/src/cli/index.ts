@@ -20,7 +20,7 @@ const config = loadConfig();
 const db = new Database(config.historyFile);
 
 const xdgConfigPath = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
-const logPath = path.join(xdgConfigPath, 'ask-ai', 'ask-ai.log');
+const logPath = path.join(xdgConfigPath, 'ask-ai', 'ask-ai.ts.log');
 Logger.initialize(logPath);
 const logger = Logger.getInstance();
 
@@ -56,16 +56,46 @@ async function recordResponse(
 
 const program = new Command();
 
+/*
+In Commander.js:
+
+- `program.opts()` gets options from the root program/command level
+- `cmd.parent.opts()` gets options from the immediate parent command of the current subcommand
+
+Here's an example to illustrate:
+
+program
+    .option('--global-flag <value>', 'Global flag')  // Root level option
+
+program
+    .command('parent')
+    .option('--parent-flag <value>', 'Parent flag')  // Parent command option
+    .command('child')                                // Subcommand
+    .option('--child-flag <value>', 'Child flag')    // Child command option
+    .action((childOptions, cmd) => {
+        console.log({
+            programOpts: program.opts(),        // Gets { globalFlag: value }
+            parentOpts: cmd.parent.opts(),      // Gets { parentFlag: value }
+            childOpts: childOptions             // Gets { childFlag: value }
+        });
+    });
+*/
+
 // Add tui command
 program
     .command('tui')
     .description('Launch the Terminal User Interface for interactive chat')
     .option('-m, --model <model>', 'LLM model to use')
-    .action(async (options) => {
-        // We import and run the TUI here
+    .option('--debug', 'Enable debug mode')
+    // 1st Argument to .action: options pased to the current command (ie tui)
+    // 2nd Argument: full command object, which includes the above options plus other things such as the app name and probably options passed to the app, before the sub command
+    .action(async (cmdOptions, _) => {
         try {
-            // We need to dynamically import to avoid circular dependencies
-            await import('../tui/index.js');
+            const { startTUI } = await import('../tui/index.js');
+            const model = cmdOptions.model || program.opts().model;
+            const debug = cmdOptions.debug || program.opts().debug;
+            logger.log('debug', 'TUI options in main app:', { model, debug })
+            await startTUI({ model, debug });
         } catch (error) {
             console.error('Failed to start TUI:', error);
         }
@@ -84,8 +114,11 @@ program
     .option('--show <id>', 'Show a specific conversation')
     .option('--id <id>', 'Continue a specific conversation')
     .option('--stream', 'Stream the response')
+    .option('--debug', 'Enable debug mode')
     .option('-q, --quiet', 'Suppress output to console')
     .action(async (query, options) => {
+        logger.log('debug', 'ask-ai CLI Query:', { query })
+        logger.log('debug', 'ask-ai CLI Options:', { options })
         const pendingOperations: Promise<void>[] = [];
         try {
             logger.log('debug', 'Options:', { options })

@@ -3,6 +3,8 @@ import path from 'path';
 import yaml from 'yaml';
 import os from 'os';
 
+import { Logger } from '../utils/logger';
+
 export interface Config {
     defaultModel: string;
     modelsMap: Record<string, string>;
@@ -13,6 +15,7 @@ export interface Config {
     systemPrompt: string;
     logFile: string;
     stream: boolean;
+    debug: boolean;
 }
 
 const XDGConfigPath = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
@@ -34,7 +37,8 @@ const DEFAULT_CONFIG: Config = {
     temperature: 0.7,
     systemPrompt: "You are a helpful assistant who doesn't talk back",
     logFile: path.join(XDGConfigPath, 'ask-ai', 'ask-ai.log'),
-    stream: false
+    stream: false,
+    debug: false
 };
 
 export function loadConfig(): Config {
@@ -64,13 +68,18 @@ export function loadConfig(): Config {
 }
 
 export function getModelName(modelAlias: string, config: Config): string {
+    const logger = Logger.getInstance();
+    logger.log('debug', 'getModelName:', { modelAlias, config })
     // If it's a model name in the map, use the mapped value
     if (config.modelsMap[modelAlias]) {
         return config.modelsMap[modelAlias];
     }
 
-    // Otherwise return the original string (might be a direct model name)
-    return modelAlias;
+    // // Otherwise return the original string (might be a direct model name)
+    // return modelAlias;
+
+    // Actually, return "" if no match
+    return "";
 }
 
 export function getDefaultModel(config: Config): string {

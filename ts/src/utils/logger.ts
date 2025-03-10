@@ -1,3 +1,5 @@
+import { loadConfig } from '../config';
+
 import fs from 'fs';
 import path from 'path';
 
@@ -20,12 +22,20 @@ export class Logger {
 
     static getInstance(): Logger {
         if (!Logger.instance) {
+            // TODO: would be nice to create the instance but need to get the
+            // log path from config
             throw new Error('Logger not initialized. Call initialize() first.');
         }
         return Logger.instance;
     }
 
     log(level: string, message: string, metadata?: Record<string, any>) {
+        // Return if log level is lower than config setting
+        // const config = loadConfig();
+        // if (level === 'debug' && !config.debug) {
+        //     return;
+        // }
+
         const timestamp = new Date().toISOString();
         const logEntry = {
             timestamp,

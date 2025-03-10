@@ -3,6 +3,8 @@ import { LLMConfig, Message, LLMResponse, StreamingResponse } from './types';
 // Is this the correct way to do this?
 import { LLMStreamEmitter } from './base';
 
+import { Logger } from '../utils/logger';
+
 import OpenAI from 'openai';
 
 export class OpenAIClient extends BaseLLMClient {
@@ -56,6 +58,7 @@ export class OpenAIClient extends BaseLLMClient {
 
     sendStream(messages: Message[], config?: Partial<LLMConfig>): StreamingResponse {
         const emitter = new LLMStreamEmitter();
+        const logger = Logger.getInstance();
 
         if (!this.client) {
             emitter.emit('error', new Error('OpenAI client not initialized. API key may be missing.'));
@@ -81,16 +84,21 @@ export class OpenAIClient extends BaseLLMClient {
                 });
 
                 let fullContent = '';
+                let usage: any = undefined;
                 for await (const chunk of stream) {
                     const content = chunk.choices[0]?.delta?.content || '';
+                    usage = chunk.usage;
+
                     fullContent += content;
                     emitter.emit('data', content);
+                    logger.log('debug', 'OpenAI chunk:', { chunk: chunk, usage: usage });
                 }
 
+                logger.log('debug', 'OpenAI final usage:', { usage: usage });
                 emitter.emit('done', {
                     content: fullContent,
                     finishReason: 'stop',
-                    usage: undefined // Token usage not available in streaming mode
+                    usage: usage || undefined
                 });
             } catch (error) {
                 emitter.emit('error', error);
