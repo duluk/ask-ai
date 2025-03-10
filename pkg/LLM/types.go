@@ -33,6 +33,8 @@ type ClientResponse struct {
 
 type Client interface {
 	Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error)
+	// StreamChat handles streaming responses from LLMs
+	StreamChat(args ClientArgs, termWidth int, tabWidth int, callback func(chunk string)) (ClientResponse, error)
 }
 
 type Anthropic struct {
@@ -70,4 +72,5 @@ type ClientArgs struct {
 	Temperature  *float32
 	Log          *os.File
 	ConvID       *int
+	Ctx          context.Context // Context for cancellation
 }
