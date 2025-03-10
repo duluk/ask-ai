@@ -19,13 +19,21 @@ interface ConversationOutputProps {
 // Component for displaying conversation messages
 export const ConversationOutput: FC<ConversationOutputProps> = ({ messages, isTyping }) => {
     return (
-        <Box flexDirection="column" flexGrow={1}>
+        <Box
+            flexDirection="column"
+            height="100%"
+            borderStyle="single"
+            borderColor="blue"
+            flexGrow={1}
+            padding={1}
+            overflow="auto"
+        >
             {messages.map((msg, index) => (
                 <Box key={index} flexDirection="column" marginBottom={1}>
                     <Text bold color={msg.role === 'user' ? 'green' : 'cyan'}>
                         {msg.role === 'user' ? 'You:' : msg.role === 'assistant' ? 'AI:' : 'System:'}
                     </Text>
-                    <Text>{msg.content}</Text>
+                    <Text wrap="wrap" paddingLeft={1}>{msg.content}</Text>
                 </Box>
             ))}
             {isTyping && (
@@ -37,16 +45,48 @@ export const ConversationOutput: FC<ConversationOutputProps> = ({ messages, isTy
     );
 };
 
+interface StatusLineAreaProps {
+    isTyping: boolean;
+    modelName: string;
+}
+
+export const StatusLineArea: FC<StatusLineAreaProps> = ({ isTyping, modelName }) => {
+    return (
+        <Box
+            flexDirection="row"
+            justifyContent="space-between"
+            width="100%"
+        >
+            <Box
+                width="100%"
+                paddingLeft={1}
+                paddingRight={1}
+            >
+                <Text
+                    // backgroundColor="blue"
+                    color="yellow"
+                    wrap="truncate"
+                    paddingLeft={1}
+                    paddingRight={1}
+                >
+                    {isTyping
+                        ? 'AI is thinking...'
+                        : `Model: ${modelName} | Use Ctrl+N for newline | Press Esc to quit`}
+                </Text>
+            </Box>
+        </Box >
+    );
+};
+
 interface InputAreaProps {
     value: string;
     onChange: (value: string) => void;
     onSubmit: () => void;
     isTyping: boolean;
-    modelName: string;
 }
 
 // Component for the input area
-export const InputArea: FC<InputAreaProps> = ({ value, onChange, onSubmit, isTyping, modelName }) => {
+export const InputArea: FC<InputAreaProps> = ({ value, onChange, onSubmit, isTyping }) => {
     const { exit } = useApp();
 
     useInput((input: string, key) => {
@@ -66,16 +106,14 @@ export const InputArea: FC<InputAreaProps> = ({ value, onChange, onSubmit, isTyp
     });
 
     return (
-        <Box flexDirection="column" marginTop={1}>
-            <Box borderStyle="single" borderColor={isTyping ? "gray" : "green"}>
+        <Box flexDirection="column" width="100%">
+            <Box
+                borderStyle="single"
+                borderColor={isTyping ? "gray" : "green"}
+                minHeight={3}
+                alignItems="flex-end"
+            >
                 <Text>{value}</Text>
-            </Box>
-            <Box marginTop={1}>
-                <Text backgroundColor="blue" color="white">
-                    {isTyping
-                        ? 'AI is thinking...'
-                        : `Model: ${modelName} | Use Ctrl+N for newline | Press Esc to quit`}
-                </Text>
             </Box>
         </Box>
     );
@@ -219,17 +257,22 @@ export const AskAITUI: FC<AskAITUIProps> = ({ config, db, modelName, logger }) =
 
     return (
         <Box flexDirection="column" height="100%">
-            <ConversationOutput
-                messages={displayMessages}
-                isTyping={isTyping && !streamContent}
+            <Box flexGrow={1} minHeight={10}>
+                <ConversationOutput
+                    messages={displayMessages}
+                    isTyping={isTyping && !streamContent}
+                />
+            </Box>
+            <StatusLineArea
+                isTyping={isTyping}
+                modelName={modelName}
             />
             <InputArea
                 value={input}
                 onChange={setInput}
                 onSubmit={handleSubmit}
                 isTyping={isTyping}
-                modelName={modelName}
             />
-        </Box>
+        </Box >
     );
 };
