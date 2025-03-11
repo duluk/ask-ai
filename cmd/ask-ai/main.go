@@ -13,6 +13,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/LLM"
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
+	"github.com/duluk/ask-ai/pkg/tui" // Add this import
 )
 
 // I'm probably writing "Ruby Go"...
@@ -106,6 +107,18 @@ func main() {
 		clientArgs.ConvID = &opts.ConversationID
 	}
 
+	// If TUI mode is enabled, start the TUI
+	if opts.UseTUI {
+		// Ensure we don't output directly to terminal when in TUI mode
+		opts.NoOutput = true
+		err = tui.Run(opts, clientArgs, db)
+		if err != nil {
+			fmt.Println("Error running TUI: ", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	/* GET THE PROMPT */
 	var prompt string
 	if pflag.NArg() > 0 {
@@ -176,20 +189,20 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	continueChat := opts.ContinueChat
 
 	switch model {
-	case "chatgpt":
-		api_url := "https://api.openai.com/v1/"
-		client = LLM.NewOpenAI("openai", api_url)
-	case "claude":
-		client = LLM.NewAnthropic()
-	case "gemini":
-		client = LLM.NewGoogle()
-	case "grok":
-		api_url := "https://api.x.ai/v1/"
-		client = LLM.NewOpenAI("xai", api_url)
-	case "deepseek":
-		api_url := "https://api.deepseek.com/v1/"
-		client = LLM.NewOpenAI("deepseek", api_url)
-		// client = LLM.NewDeepSeek()
+	// case "chatgpt":
+	// 	api_url := "https://api.openai.com/v1/"
+	// 	client = LLM.NewOpenAI("openai", api_url)
+	// case "claude":
+	// 	client = LLM.NewAnthropic()
+	// case "gemini":
+	// 	client = LLM.NewGoogle()
+	// case "grok":
+	// 	api_url := "https://api.x.ai/v1/"
+	// 	client = LLM.NewOpenAI("xai", api_url)
+	// case "deepseek":
+	// 	api_url := "https://api.deepseek.com/v1/"
+	// 	client = LLM.NewOpenAI("deepseek", api_url)
+	// 	// client = LLM.NewDeepSeek()
 	case "ollama":
 		client = LLM.NewOllama()
 	default:
@@ -214,10 +227,23 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		fmt.Println("Assistant: ")
 	}
 
-	resp, err := client.Chat(args, opts.ScreenWidth, opts.TabWidth)
+	resp, streamChan, err := client.Chat(args, opts.ScreenWidth, opts.TabWidth)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
+	}
+
+	// Collect the full response while printing chunks
+	fullResponse := ""
+	for chunk := range streamChan {
+		if chunk.Error != nil {
+			fmt.Println("Error: ", chunk.Error)
+			os.Exit(1)
+		}
+		if !opts.Quiet {
+			fmt.Print(chunk.Content)
+		}
+		fullResponse += chunk.Content
 	}
 
 	if !opts.Quiet {

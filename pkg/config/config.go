@@ -15,6 +15,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/database"
 )
 
+// Add this to your Options struct
 type Options struct {
 	Model          string
 	Context        int
@@ -33,6 +34,8 @@ type Options struct {
 	TabWidth       int
 	Quiet          bool
 	NoRecord       bool
+	UseTUI         bool // Add this field
+	NoOutput       bool
 }
 
 const Version = "0.3.3"
@@ -96,6 +99,7 @@ func Initialize() (*Options, error) {
 	pflag.StringP("height", "", "", "Height of the screen for linewrap")
 	pflag.BoolP("quiet", "q", false, "Output only the LLM response")
 	pflag.BoolP("no-record", "", false, "Don't write query/response to database")
+	pflag.BoolP("tui", "", false, "Use the Terminal User Interface")
 
 	// Bind all flags to viper
 	viper.BindPFlag("context", pflag.Lookup("context"))
@@ -114,6 +118,7 @@ func Initialize() (*Options, error) {
 	viper.BindPFlag("screen.height", pflag.Lookup("height"))
 	viper.BindPFlag("quiet", pflag.Lookup("quiet"))
 	viper.BindPFlag("no-record", pflag.Lookup("no-record"))
+	viper.BindPFlag("tui", pflag.Lookup("tui"))
 
 	viper.BindPFlag("version", pflag.Lookup("version"))
 	viper.BindPFlag("full-version", pflag.Lookup("full-version"))
@@ -150,6 +155,8 @@ func Initialize() (*Options, error) {
 		TabWidth:       TabWidth,
 		Quiet:          viper.GetBool("quiet"),
 		NoRecord:       viper.GetBool("no-record"),
+		UseTUI:         viper.GetBool("tui"),
+		NoOutput:       false,
 	}, nil
 }
 
