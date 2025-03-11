@@ -24,7 +24,7 @@ import (
 type TUI struct {
 	app            *tview.Application
 	outputBox      *tview.TextView
-	inputField     *tview.InputField
+	inputField     *tview.TextArea
 	statusBar      *tview.TextView
 	opts           *config.Options
 	db             *database.ChatDB
@@ -44,23 +44,36 @@ func NewTUI(opts *config.Options, db *database.ChatDB, log *os.File) *TUI {
 	outputBox := tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true).
-		SetWordWrap(true).
+		// SetWrap(true).
+		// SetWordWrap(true).
 		SetScrollable(true).
 		SetChangedFunc(func() {
 			app.Draw()
 		})
-	outputBox.SetBorder(true).SetTitle("Conversation")
+	outputBox.SetBorder(true).
+		SetTitle("Conversation").
+		SetBorderColor(tcell.ColorBlue)
 
-	inputField := tview.NewInputField().
-		SetLabel("> ").
-		SetFieldWidth(0).
-		SetFieldStyle(tcell.StyleDefault.Foreground(tcell.ColorWhite))
-	inputField.SetBorder(true).SetTitle("Your message")
+	inputField := tview.NewTextArea().
+		SetPlaceholder("Type your message here...").
+		SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorGray)).
+		SetWordWrap(true)
+	inputField.SetBorder(true).
+		SetTitle("Your message").
+		SetBorderColor(tcell.ColorGreen)
+	inputField.SetTextStyle(tcell.StyleDefault.Foreground(tcell.ColorLightCyan))
+
+	// We'll set the change handler after tui is initialized
 
 	statusBar := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignLeft)
 	statusBar.SetBackgroundColor(tcell.ColorBlue)
+
+	flex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(outputBox, 0, 1, false).
+		AddItem(statusBar, 1, 0, false).
+		AddItem(inputField, 3, 0, true)
 
 	tui := &TUI{
 		app:            app,
@@ -76,59 +89,48 @@ func NewTUI(opts *config.Options, db *database.ChatDB, log *os.File) *TUI {
 		responseLines:  0,
 	}
 
-	// Set up layout
-	flex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(outputBox, 0, 1, false).
-		AddItem(statusBar, 1, 0, false).
-		AddItem(inputField, 3, 0, true)
-
 	// Set up key bindings
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc || (event.Key() == tcell.KeyCtrlC) {
 			app.Stop()
 			return nil
 		}
-		return event
-	})
 
-	// Set up input callback
-	inputField.SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEnter {
-			// Get the query text
-			query := inputField.GetText()
+		if event.Key() == tcell.KeyEnter {
+			if inputField.HasFocus() {
+				text := inputField.GetText()
+				if text == "" {
+					return nil
+				}
 
-			// Only proceed if there's actual text
-			if len(query) > 0 {
-				// Save query to local variable to avoid closure issues
-				queryText := query
+				if event.Modifiers()&tcell.ModShift != 0 {
+					// Shift+Enter - add newline
+					inputField.SetText(text+"\n", true)
+					return nil
+				} else {
+					queryText := text
+					inputField.SetText("", false)
 
-				// Clear the input field immediately in the main thread - don't use QueueUpdateDraw here
-				inputField.SetText("")
+					go func(t *TUI) {
+						time.Sleep(50 * time.Millisecond)
+						defer func() {
+							if r := recover(); r != nil {
+								t.app.QueueUpdateDraw(func() {
+									t.appendText(fmt.Sprintf("\nError: Recovered from panic: %v\n", r))
+									t.updateStatusBar()
+									t.app.SetFocus(t.inputField)
+								})
+							}
+						}()
 
-				// Process the query in a goroutine after a slight delay to prevent UI blocking
-				go func() {
-					// Give the UI thread time to finish handling the Enter key
-					time.Sleep(50 * time.Millisecond)
-
-					// Recover from any panics
-					defer func() {
-						if r := recover(); r != nil {
-							tui.app.QueueUpdateDraw(func() {
-								tui.appendText(fmt.Sprintf("\nError: Recovered from panic: %v\n", r))
-								tui.updateStatusBar()
-								tui.app.SetFocus(tui.inputField)
-							})
-						}
-					}()
-
-					// Update status bar to show we're processing
-					tui.updateStatusBar("Processing your request...")
-
-					// Process the query in background
-					tui.sendQuery(queryText)
-				}()
+						t.updateStatusBar("Processing your request...")
+						t.sendQuery(queryText)
+					}(tui)
+					return nil
+				}
 			}
 		}
+		return event
 	})
 
 	// Set the root primitive
@@ -366,7 +368,7 @@ func (t *TUI) sendQuery(query string) {
 
 	// Reset UI state
 	t.updateStatusBar()
-	t.inputField.SetText("")
+	t.inputField.SetText("", false)
 	t.app.SetFocus(t.inputField)
 }
 
