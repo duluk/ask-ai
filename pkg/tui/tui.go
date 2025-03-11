@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -16,7 +17,6 @@ import (
 	"github.com/duluk/ask-ai/pkg/database"
 )
 
-// Layout constants
 const (
 	inputHeight    = 3 // Input box height
 	statusHeight   = 1 // Status line height
@@ -24,9 +24,9 @@ const (
 	borderHeight   = 2 // Border height (top + bottom)
 	contentPadding = 2 // Padding inside components
 	contentMargin  = 4 // Total horizontal margin for content (borders + padding)
+	testPadding    = 0 // Padding for testing
 )
 
-// Color constants
 const (
 	lipColorBlack        = "0"
 	lipColorDarkRed      = "1"
@@ -54,12 +54,12 @@ const (
 	lipColorBlue         = "63"
 )
 
-// Styles
 var (
 	outputBorderColor = lipgloss.Color(lipColorDarkBlue)
 	inputBorderColor  = lipgloss.Color(lipColorGreen)
 
-	// If using a system that doesn't have great support for fancy borders, just use plain ASCII
+	// If using a system that doesn't have great support for fancy borders,
+	// just use plain ASCII
 	borderStyle = func() lipgloss.Border {
 		term := os.Getenv("TERM")
 		// tmux is not displaying the rounded corners very well
@@ -108,7 +108,9 @@ type Model struct {
 	statusMsg    string
 }
 
-// Create a new TUI model ^
+// TickMsg is used for periodic updates
+type TickMsg time.Time
+
 func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) Model {
 	// log.Printf("Initializing with screen size: %dx%d", opts.ScreenWidth, opts.ScreenHeight)
 
@@ -153,10 +155,8 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 		}
 	*/
 
-	// Scrollable viewport for chat history
-	// Adjust viewport height calculation
-	totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding
-	// Add a small buffer to prevent content from being hidden
+	// Scrollable viewport for chat history, with small padding
+	totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding + testPadding
 	viewportHeight := opts.ScreenHeight - totalFixedHeight
 
 	vp := viewport.New(opts.ScreenWidth, viewportHeight)
@@ -173,22 +173,31 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 		statusMsg:    fmt.Sprintf("Model: %s | ConvID: %d | Ctrl+C: Exit | /help: Commands", *clientArgs.Model, *clientArgs.ConvID),
 		windowWidth:  opts.ScreenWidth,
 		windowHeight: viewportHeight,
+		ready:        false,
 	}
 }
 
 // Init implements tea.Model
 func (m Model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(
+		textinput.Blink,
+		tick(),
+	)
 }
 
-// Update implements tea.Model
+// TODO: this probably isn't needed anymore; it was trying to fix the scrolling issue
+// tick sends a message every second
+func tick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return TickMsg(t)
+	})
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
-
-	// log.Printf("Received message type: %T", msg)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -213,13 +222,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Clear input
 			m.textInput.SetValue("")
 
-			// Add user message to content
 			userMsg := userStyle.Render("User: ") + strings.Trim(prompt, " \t\n") + "\n\n"
 			m.content += userMsg
-			m.viewport.SetContent(m.content)
+
+			// Pre-wrap content using viewport width to handle Charm's wrapping problems
+			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+			m.viewport.SetContent(wrappedContent)
 			m.viewport.GotoBottom()
 
-			// Set processing state
 			// TODO: add spinner
 			m.processing = true
 			m.statusMsg = "Processing..."
@@ -234,14 +244,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.windowWidth = msg.Width
 		m.windowHeight = msg.Height
 
-		if !m.ready {
-			// The viewport is created in Initialize
-			m.ready = true
-		}
-
 		// NOTE: This affects the viewport height/top border
 		// Use consistent height calculations across the application
-		totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding
+		totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding + testPadding
+		// TODO: this can possible be removed as we figured out the scrolling issue
 		// Add a small buffer to prevent content from being hidden
 		viewportHeight := m.windowHeight - totalFixedHeight
 		contentWidth := m.windowWidth - contentMargin
@@ -254,46 +260,57 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Height = viewportHeight
 		m.textInput.Width = contentWidth
 
-		// Ensure content is set
-		m.viewport.SetContent(m.content)
-
-		// Only scroll to bottom during processing or when explicitly requested
-		if m.processing {
+		if !m.ready {
+			m.ready = true
+			// Perform initial setup like setting initial content (already handled below)
+			// and potentially focusing input, starting cursor blink if needed here.
+		} else {
+			// Re-wrap and set content on resize after initial setup (this is
+			// to deal with Charm's wrapping problems)
+			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+			m.viewport.SetContent(wrappedContent)
 			m.viewport.GotoBottom()
 		}
 
 		return m, nil
 
 	case promptMsg:
-		// log.Printf("Prompt message received")
-		// Process the prompt with LLM
-		// Make sure clientArgs.Prompt is not nil
 		if m.clientArgs.Prompt == nil {
 			m.clientArgs.Prompt = new(string)
 		}
 		*m.clientArgs.Prompt = msg.prompt
 
-		// Create command to get LLM response
 		return m, func() tea.Msg {
 			resp, err := m.processPrompt()
 			return responseMsg{response: resp, err: err}
 		}
 
-	// Handle streaming chunks
+	// Handle streaming chunks (this may be broken)
 	case streamChunkMsg:
+		// TODO: remove this probably (duplicated by processPrompt?)
 		// Update viewport with new content
-		m.viewport.SetContent(m.content)
-		m.viewport.GotoBottom()
+		// wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+		// m.viewport.SetContent(wrappedContent)
 
-		// Force a proper viewport refresh
-		return m, tea.Batch(
-			func() tea.Msg {
-				return tea.WindowSizeMsg{
-					Width:  m.windowWidth,
-					Height: m.windowHeight - 2,
-				}
-			},
-		)
+		// m.viewport, cmd = m.viewport.Update(msg)
+		// cmds = append(cmds, cmd)
+
+		// // Update viewport with new content
+		// // Force a proper viewport refresh
+		// cmds = append(cmds, func() tea.Msg {
+		// 	return tea.WindowSizeMsg{
+		// 		Width:  m.windowWidth,
+		// 		Height: m.windowHeight,
+		// 	}
+		// })
+
+		// m.viewport.GotoBottom()
+		return m, tea.Batch(cmds...)
+
+	// TODO: again this is probably not needed
+	case TickMsg:
+		m.viewport.GotoBottom()
+		cmds = append(cmds, tick())
 
 	case responseMsg:
 		m.processing = false
@@ -303,31 +320,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Add assistant response to content
 		assistantMsg := assistantStyle.Render("Assistant: ") + msg.response + "\n\n"
 		m.content += assistantMsg
 
-		// Update viewport and ensure it's properly rendered
-		m.viewport.SetContent(m.content)
+		// Deal with Charm's wrapping problems
+		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+		m.viewport.SetContent(wrappedContent)
 		m.viewport.GotoBottom()
 
-		// Force a complete viewport refresh
-		cmds = []tea.Cmd{
-			func() tea.Msg {
-				return tea.WindowSizeMsg{
-					Width:  m.windowWidth,
-					Height: m.windowHeight,
-				}
-			},
-		}
-
-		// Update status message
 		m.statusMsg = fmt.Sprintf("Model: %s | ConvID: %d | /help for commands", *m.clientArgs.Model, *m.clientArgs.ConvID)
 
 		return m, tea.Batch(cmds...)
 	}
 
-	// Handle viewport updates
 	if m.textInput.Focused() {
 		// When text input is focused, only handle specific keys and mouse
 		switch msg := msg.(type) {
@@ -362,7 +367,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// View implements tea.Model
 func (m Model) View() string {
 	if !m.ready {
 		return "Initializing..."
@@ -372,7 +376,6 @@ func (m Model) View() string {
 	// them line up correctly. Why 2? /shrug
 	contentWidth := m.windowWidth - 2
 
-	// Layout the components
 	viewportBox := viewportStyle.
 		Width(contentWidth).
 		Height(m.viewport.Height).
@@ -382,7 +385,6 @@ func (m Model) View() string {
 		// Reduce width by 2 to account for left and right spacing; this allows
 		// it to line up with the borders better
 		Width(m.windowWidth - 2).
-		// Align(lipgloss.Center).  // this centers the text
 		Render(m.statusMsg)
 
 	inputBox := inputStyle.
@@ -390,6 +392,7 @@ func (m Model) View() string {
 		Render(m.textInput.View())
 
 	// Ensure proper vertical layout with fixed heights
+	// TODO: try lipgloss.JoinVertical again
 	return fmt.Sprintf(
 		"%s\n%s%s%s\n%s",
 		viewportBox,
@@ -407,19 +410,16 @@ type responseMsg struct {
 	err      error
 }
 
-// Process the prompt with LLM
-// Add these types to your custom message types section
+// TODO: Does this need to be in types.go?
 type streamChunkMsg struct {
 	chunk string
 	done  bool
 	err   error
 }
 
-// Update the processPrompt method
 func (m *Model) processPrompt() (string, error) {
 	var client LLM.Client
 
-	// Ensure we have valid pointers
 	if m.clientArgs.Model == nil {
 		m.clientArgs.Model = new(string)
 		*m.clientArgs.Model = "chatgpt" // Default model
@@ -429,6 +429,7 @@ func (m *Model) processPrompt() (string, error) {
 		return "", fmt.Errorf("prompt is nil")
 	}
 
+	// TODO: I think this is broken
 	if m.clientArgs.ConvID == nil {
 		m.clientArgs.ConvID = new(int)
 		*m.clientArgs.ConvID = 1
@@ -477,19 +478,15 @@ func (m *Model) processPrompt() (string, error) {
 	// Create a channel for streaming responses
 	streamChan := make(chan LLM.StreamResponse)
 
-	// Start a goroutine to process the stream
 	go func() {
 		err := client.ChatStream(m.clientArgs, m.opts.ScreenWidth, m.opts.TabWidth, streamChan)
 		if err != nil {
-			// If there's an error starting the stream, it will be sent through the channel
-			// by the ChatStream implementation
+			// If there's an error starting the stream, it will be sent through
+			// the channel by the ChatStream implementation
 		}
 	}()
 
-	// Collect the full response for logging
 	fullResponse := ""
-
-	// Process the stream
 	for resp := range streamChan {
 		if resp.Error != nil {
 			m.opts.NoOutput = originalNoOutput
@@ -501,8 +498,9 @@ func (m *Model) processPrompt() (string, error) {
 		// Send the chunk to the Bubble Tea program
 		m.content += resp.Content
 
-		// Update the viewport with each chunk to enable streaming
-		m.viewport.SetContent(m.content)
+		// Deal with Charm's wrapping problems
+		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+		m.viewport.SetContent(wrappedContent)
 		m.viewport.GotoBottom()
 
 		if resp.Done {
@@ -511,11 +509,9 @@ func (m *Model) processPrompt() (string, error) {
 		}
 	}
 
-	// Restore original setting
 	m.opts.NoOutput = originalNoOutput
 
 	if !m.opts.NoRecord {
-		// Estimate tokens for now
 		inputTokens := LLM.EstimateTokens(*m.clientArgs.Prompt)
 		outputTokens := LLM.EstimateTokens(fullResponse)
 
@@ -575,6 +571,9 @@ Available commands:
 `
 		m.content += helpText + "\n"
 		m.viewport.SetContent(m.content)
+		// Deal with Charm's wrapping problems
+		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+		m.viewport.SetContent(wrappedContent)
 		m.viewport.GotoBottom()
 		m.textInput.SetValue("")
 
@@ -585,14 +584,18 @@ Available commands:
 			m.statusMsg = fmt.Sprintf("Model changed to: %s | ConvID: %d", newModel, *m.clientArgs.ConvID)
 		} else {
 			m.content += fmt.Sprintf("Current model: %s\n\n", *m.clientArgs.Model)
-			m.viewport.SetContent(m.content)
+			// Deal with Charm's wrapping problems
+			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+			m.viewport.SetContent(wrappedContent)
 			m.viewport.GotoBottom()
 		}
 		m.textInput.SetValue("")
 
 	case "/id":
 		m.content += fmt.Sprintf("Conversation ID: %d\n\n", *m.clientArgs.ConvID)
-		m.viewport.SetContent(m.content)
+		// Deal with Charm's wrapping problems
+		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+		m.viewport.SetContent(wrappedContent)
 		m.viewport.GotoBottom()
 		m.textInput.SetValue("")
 
@@ -614,13 +617,17 @@ Available commands:
 			}
 			m.content += "\n"
 		}
-		m.viewport.SetContent(m.content)
+		// Deal with Charm's wrapping problems
+		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+		m.viewport.SetContent(wrappedContent)
 		m.viewport.GotoBottom()
 		m.textInput.SetValue("")
 
 	default:
 		m.content += fmt.Sprintf("Unknown command: %s\n\n", command)
-		m.viewport.SetContent(m.content)
+		// Deal with Charm's wrapping problems
+		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+		m.viewport.SetContent(wrappedContent)
 		m.viewport.GotoBottom()
 		m.textInput.SetValue("")
 	}
@@ -656,14 +663,14 @@ func min(a, b int) int {
 	return b
 }
 
-// Add a new command to handle streaming chunks
-func streamChunkCmd(chunkChan <-chan streamChunkMsg) tea.Cmd {
-	return func() tea.Msg {
-		chunk, ok := <-chunkChan
-		if !ok {
-			// Channel closed, no more chunks
-			return nil
-		}
-		return chunk
-	}
-}
+// TODO: should this just be removed?
+// func streamChunkCmd(chunkChan <-chan streamChunkMsg) tea.Cmd {
+// 	return func() tea.Msg {
+// 		chunk, ok := <-chunkChan
+// 		if !ok {
+// 			// Channel closed, no more chunks
+// 			return nil
+// 		}
+// 		return chunk
+// 	}
+// }
