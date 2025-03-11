@@ -97,3 +97,33 @@ func (cs *Anthropic) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientR
 	}
 	return r, nil
 }
+
+// Add this method to the Anthropic struct
+func (cs *Anthropic) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
+	// Not yet implemented - just use the non-streaming version for now
+	resp, err := cs.Chat(args, termWidth, tabWidth)
+	if err != nil {
+		stream <- StreamResponse{
+			Content: "",
+			Done:    true,
+			Error:   err,
+		}
+		return err
+	}
+
+	// Send the full response as one chunk
+	stream <- StreamResponse{
+		Content: resp.Text,
+		Done:    false,
+		Error:   nil,
+	}
+
+	// Signal completion
+	stream <- StreamResponse{
+		Content: "",
+		Done:    true,
+		Error:   nil,
+	}
+
+	return nil
+}
