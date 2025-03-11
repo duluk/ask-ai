@@ -1,10 +1,8 @@
 package LLM
 
 import (
-	"os"
 	"strings"
 
-	"github.com/duluk/ask-ai/pkg/linewrap"
 	"github.com/duluk/ask-ai/pkg/ollama"
 )
 
@@ -15,7 +13,49 @@ func NewOllama() *Ollama {
 	return &Ollama{APIKey: apiKey, Client: client}
 }
 
-func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error) {
+func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, <-chan StreamResponse, error) {
+	// For non-streaming requests, we'll collect the full response
+	responseChan := make(chan StreamResponse)
+
+	// Start a goroutine to collect the full response
+	// go func() {
+	// 	for resp := range responseChan {
+	// 		if resp.Error != nil {
+	// 			// Handle error
+	// 			break
+	// 		}
+	// 		fullResponse += resp.Content
+	// 	}
+	// }()
+
+	go func() {
+		defer close(responseChan)
+
+		// Use the streaming implementation
+		err := cs.ChatStream(args, termWidth, tabWidth, responseChan)
+		if err != nil {
+			responseChan <- StreamResponse{
+				Error: err,
+			}
+		}
+	}()
+
+	return ClientResponse{}, responseChan, nil
+
+	// // Return the full response
+	// // Estimate tokens since we don't have exact counts in this implementation
+	// inputTokens := EstimateTokens(*args.Prompt)
+	// outputTokens := EstimateTokens(fullResponse)
+	//
+	// return ClientResponse{
+	// 	Text:         fullResponse,
+	// 	InputTokens:  inputTokens,
+	// 	OutputTokens: outputTokens,
+	// }, nil
+}
+
+// Add this method to the Ollama struct
+func (cs *Ollama) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
 	client := cs.Client
 
 	var msgCtx string
@@ -37,8 +77,9 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 
 	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	adjustedMaxTokens := int(myInputEstimate + int32(*args.MaxTokens))
+
 	req := ollama.ChatCompletionRequest{
-		Model: OllamaModelGemma2,
+		Model: OllamaModelGemma2, // or whatever model you're using
 		Messages: []ollama.Message{
 			{
 				Role:    "system",
@@ -53,28 +94,41 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 				Content: *args.Prompt,
 			},
 		},
-		// Since this is a local model, let's give it some room to cook
 		MaxTokens:   max(adjustedMaxTokens, minTokens),
 		Temperature: float64(*args.Temperature),
+		Stream:      true,
 	}
 
-	resp, err := client.ChatCompletion(req)
+	// Use the streaming API from ollama client
+	err := client.ChatCompletionStream(req, func(chunk ollama.ChatCompletionChunk) {
+		if len(chunk.Choices) > 0 {
+			content := chunk.Choices[0].Delta.Content
+
+			// Only send non-empty content
+			if content != "" {
+				stream <- StreamResponse{
+					Content: content,
+					Done:    false,
+					Error:   nil,
+				}
+			}
+		}
+	})
 	if err != nil {
-		return ClientResponse{}, err
+		stream <- StreamResponse{
+			Content: "",
+			Done:    true,
+			Error:   err,
+		}
+		return err
 	}
 
-	usage := resp.Usage
-
-	respText := resp.Choices[0].Message.Content
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
-
-	if _, err := wrapper.Write([]byte(respText)); err != nil {
-		return ClientResponse{}, err
+	// Signal completion
+	stream <- StreamResponse{
+		Content: "",
+		Done:    true,
+		Error:   nil,
 	}
 
-	return ClientResponse{
-		Text:         respText,
-		InputTokens:  usage.PromptTokens,
-		OutputTokens: usage.CompletionTokens,
-	}, nil
+	return nil
 }
