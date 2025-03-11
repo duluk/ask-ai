@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/liushuangls/go-anthropic/v2"
+
 	// "github.com/anthropics/anthropic-sdk-go"
 	"github.com/openai/openai-go"
 
@@ -31,8 +32,16 @@ type ClientResponse struct {
 	MyEstInput   int32 // May be used at some point
 }
 
+// StreamResponse represents a chunk of streaming response
+type StreamResponse struct {
+	Content string
+	Done    bool
+	Error   error
+}
+
 type Client interface {
-	Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error)
+	Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, <-chan StreamResponse, error)
+	ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error
 }
 
 type Anthropic struct {
@@ -62,12 +71,13 @@ type Ollama struct {
 }
 
 type ClientArgs struct {
-	Model        *string
-	Prompt       *string
-	SystemPrompt *string
-	Context      []LLMConversations
-	MaxTokens    *int
-	Temperature  *float32
-	Log          *os.File
-	ConvID       *int
+	Model         *string
+	Prompt        *string
+	SystemPrompt  *string
+	Context       []LLMConversations
+	MaxTokens     *int
+	Temperature   *float32
+	Log           *os.File
+	ConvID        *int
+	DisableOutput bool
 }
