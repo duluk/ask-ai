@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -14,31 +16,68 @@ import (
 	"github.com/duluk/ask-ai/pkg/database"
 )
 
+const (
+	lipColorBlack        = "0"
+	lipColorDarkRed      = "1"
+	lipColorRed          = "1"
+	lipColorDarkGreen    = "2"
+	lipColorGreen        = "2"
+	lipColorDarkYellow   = "3"
+	lipColorYellow       = "3"
+	lipColorDarkBlue     = "4"
+	lipColorDarkMagenta  = "5"
+	lipColorMagenta      = "5"
+	lipColorDarkCyan     = "6"
+	lipColorCyan         = "6"
+	lipColorLightGray    = "7"
+	lipColorWhite        = "7"
+	lipColorDarkGray     = "8"
+	lipColorGray         = "8"
+	lipColorLightRed     = "9"
+	lipColorLightGreen   = "10"
+	lipColorLightYellow  = "11"
+	lipColorLightBlue    = "12"
+	lipColorLightMagenta = "13"
+	lipColorLightCyan    = "14"
+	lipColorLightWhite   = "15"
+	lipColorBlue         = "63"
+)
+
 // Styles
 var (
-	borderColor = lipgloss.Color("63")
+	outputBorderColor = lipgloss.Color(lipColorDarkBlue)
+	inputBorderColor  = lipgloss.Color(lipColorGreen)
+
+	// If using a system that doesn't have great support for fancy borders, just use plain ASCII
+	borderStyle = func() lipgloss.Border {
+		term := os.Getenv("TERM")
+		if strings.Contains(term, "windows") || strings.Contains(term, "xterm") {
+			return lipgloss.NormalBorder()
+		}
+		return lipgloss.RoundedBorder()
+	}()
 
 	outputStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(borderColor).
+			BorderStyle(borderStyle).
+			BorderForeground(outputBorderColor).
 			Padding(1)
 
 	statusStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("12")).
-			Foreground(lipgloss.Color("7")).
+			Background(lipgloss.Color(lipColorLightBlue)).
+			Foreground(lipgloss.Color(lipColorWhite)).
 			Padding(0, 1)
 
 	inputStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(borderColor).
+			BorderStyle(borderStyle).
+			BorderForeground(inputBorderColor).
 			Padding(0, 1)
 
 	userStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("5")).
+			Foreground(lipgloss.Color(lipColorMagenta)).
 			Bold(true)
 
 	assistantStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("2")).
+			Foreground(lipgloss.Color(lipColorGreen)).
 			Bold(true)
 )
 
@@ -57,26 +96,34 @@ type Model struct {
 	statusMsg  string
 }
 
-// Initialize creates a new TUI model
+// Create a new TUI model ^
 func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) Model {
-	ti := textinput.New()
-	ti.Placeholder = "Ask a question..."
-	ti.Focus()
-	ti.CharLimit = 0
-	ti.Width = 80
+	// log.Printf("Initializing with screen size: %dx%d", opts.ScreenWidth, opts.ScreenHeight)
 
-	// Enable Emacs-style keybindings
 	// Note: textinput already has built-in Emacs-style keybindings
 	// Ctrl+A: Move cursor to beginning of line
 	// Ctrl+E: Move cursor to end of line
 	// Ctrl+W: Delete word backward
 	// Ctrl+K: Delete to end of line
 	// Ctrl+U: Delete to beginning of line
-	// These are already implemented in the textinput component
+
+	ti := textinput.New()
+	ti.Placeholder = "Ask a question..."
+	ti.Focus()
+	ti.CharLimit = 0
+
+	ti.Width = opts.ScreenWidth
 
 	// Scrollable viewport for chat history
-	vp := viewport.New(80, 20)
+	// TODO: remove this? I can't figure out what this affects.
+	inputHeight := 3  // Input box height
+	statusHeight := 1 // Status line height
+	borderHeight := 2 // Account for borders
+	adjustedHeight := inputHeight + statusHeight + borderHeight
+
+	vp := viewport.New(opts.ScreenWidth, opts.ScreenHeight-adjustedHeight)
 	vp.SetContent("")
+	vp.YPosition = 0
 
 	return Model{
 		viewport:   vp,
@@ -86,6 +133,8 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 		clientArgs: clientArgs,
 		db:         db,
 		statusMsg:  fmt.Sprintf("Model: %s | ConvID: %d | Ctrl+C: Exit | /help: Commands", *clientArgs.Model, *clientArgs.ConvID),
+		width:      opts.ScreenWidth,
+		height:     opts.ScreenHeight - adjustedHeight,
 	}
 }
 
@@ -100,6 +149,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	// log.Printf("Received message type: %T", msg)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -125,12 +176,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textInput.SetValue("")
 
 			// Add user message to content
-			userMsg := userStyle.Render("User: ") + prompt + "\n\n"
+			userMsg := userStyle.Render("User: ") + strings.Trim(prompt, " \t\n") + "\n\n"
 			m.content += userMsg
 			m.viewport.SetContent(m.content)
 			m.viewport.GotoBottom()
 
 			// Set processing state
+			// TODO: add spinner
 			m.processing = true
 			m.statusMsg = "Processing..."
 
@@ -141,6 +193,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
+		// log.Printf("Window size message: %dx%d", msg.Width, msg.Height)
 		m.height = msg.Height
 		m.width = msg.Width
 
@@ -148,19 +201,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ready = true
 		}
 
-		// Adjust viewport and input sizes
-		inputHeight := 3 // Input + border
-		statusHeight := 1
-		viewportHeight := m.height - inputHeight - statusHeight - 2 // Extra padding
+		// log.Printf("Window size: %dx%d", m.width, m.height)
 
-		m.viewport.Width = m.width - 4 // Account for padding
+		// Adjust viewport and input sizes
+		// NOTE: This affects the viewport height/top border
+		inputHeight := 3  // Input box height
+		statusHeight := 1 // Status line height
+		// borderHeight := 2   // Account for borders
+		adjustedHeight := 4 // padding to show the top border, I don't know why
+		// adjustedHeight := inputHeight + statusHeight + borderHeight - 6
+
+		viewportHeight := m.height - inputHeight - statusHeight - adjustedHeight
+		// viewportHeight := m.height - adjustedHeight
+		adjustedWidth := m.width - 2 // Account for left and right borders
+
+		// NOTE: this is the inside width, for the text itself - so
+		// it affects things like wrapping. If no adjustment is made,
+		// the text doesn't wrap correctly. Why 4? /shrug
+		// adjustedWidth := m.width - 4
+		m.viewport.Width = adjustedWidth
 		m.viewport.Height = viewportHeight
-		m.textInput.Width = m.width - 6 // Account for padding and border
+		m.textInput.Width = adjustedWidth
 
 		m.viewport.SetContent(m.content)
+		m.viewport.GotoBottom()
+
 		return m, nil
 
 	case promptMsg:
+		// log.Printf("Prompt message received")
 		// Process the prompt with LLM
 		// Make sure clientArgs.Prompt is not nil
 		if m.clientArgs.Prompt == nil {
@@ -174,11 +243,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return responseMsg{response: resp, err: err}
 		}
 
+	// Handle streaming chunks
+	case streamChunkMsg:
+		// Update viewport with new content
+		m.viewport.SetContent(m.content)
+		m.viewport.GotoBottom()
+
+		// Force immediate render
+		return m, tea.Batch(
+			func() tea.Msg {
+				return tea.WindowSizeMsg{
+					Width:  m.width,
+					Height: m.height,
+				}
+			},
+		)
+
 	case responseMsg:
+		// log.Printf("Response message received")
 		m.processing = false
 
 		if msg.err != nil {
-			m.statusMsg = fmt.Sprintf("Error: %s", msg.err)
+			m.statusMsg = lipgloss.NewStyle().Foreground(lipgloss.Color(lipColorRed)).Render("Error: " + msg.err.Error())
+			// m.statusMsg = fmt.Sprintf("Error: %s", msg.err)
 			return m, nil
 		}
 
@@ -190,8 +277,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
 
+		// TODO: commented out because the redraw looked awkward and it isn't
+		// needed AFAICT; I think this was an attempt to fix the border issue,
+		// which wasn't an issue. Probably can be removed at some point.
 		// Force a redraw of the viewport to ensure proper rendering
-		cmds := []tea.Cmd{func() tea.Msg {
+		cmds = []tea.Cmd{func() tea.Msg {
 			return tea.WindowSizeMsg{
 				Width:  m.width,
 				Height: m.height,
@@ -221,30 +311,36 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 
+	// NOTE: This accounts for the border on viewport and input, as in it makes
+	// them line up correctly. Why 2? /shrug
+	contentWidth := m.width - 2
+
 	// Layout the components
 	outputBox := outputStyle.
-		Width(m.width - 4).
+		Width(contentWidth).
 		Height(m.viewport.Height).
 		Render(m.viewport.View())
 
 	statusLine := statusStyle.
-		Width(m.width).
+		// Reduce width by 2 to account for left and right spacing; this allows
+		// it to line up with the borders better
+		Width(m.width - 2).
+		// Align(lipgloss.Center).  // this centers the text
 		Render(m.statusMsg)
 
 	inputBox := inputStyle.
-		Width(m.width - 4).
+		Width(contentWidth).
 		Render(m.textInput.View())
 
 	// Ensure proper vertical layout with fixed heights
 	return fmt.Sprintf(
-		"%s\n%s\n%s",
+		"%s\n%s%s%s\n%s",
 		outputBox,
-		statusLine,
+		" ", statusLine, " ",
 		inputBox,
 	)
 }
 
-// Custom message types
 type promptMsg struct {
 	prompt string
 }
@@ -316,6 +412,7 @@ func (m *Model) processPrompt() (string, error) {
 		)
 	}
 
+	// TODO: I don't know if this NoOutput stuff is still needed
 	// Make sure we're not printing to stdout
 	originalNoOutput := m.opts.NoOutput
 	m.opts.NoOutput = true
@@ -346,10 +443,40 @@ func (m *Model) processPrompt() (string, error) {
 
 		// Send the chunk to the Bubble Tea program
 		m.content += resp.Content
-		m.viewport.SetContent(m.content)
-		m.viewport.GotoBottom()
+		// m.viewport.SetContent(m.content)
+		// m.viewport.GotoBottom()
+
+		// Create a command to update the UI
+		cmds := []tea.Cmd{
+			func() tea.Msg {
+				return streamChunkMsg{
+					chunk: resp.Content,
+					done:  resp.Done,
+				}
+			},
+		}
+
+		// Execute the commands immediately
+		for _, cmd := range cmds {
+			if msg := cmd(); msg != nil {
+				m.Update(msg)
+			}
+		}
+
+		// TODO: this may look ugly...
+		// Force a screen refresh after each chunk
+		// tea.Batch(func() tea.Msg {
+		// 	return tea.WindowSizeMsg{
+		// 		Width:  m.width,
+		// 		Height: m.height,
+		// 	}
+		// })
+
+		// Add a small delay to ensure proper rendering
+		// time.Sleep(10 * time.Millisecond)
 
 		if resp.Done {
+			m.viewport.GotoBottom()
 			break
 		}
 	}
@@ -397,7 +524,6 @@ func (m *Model) processPrompt() (string, error) {
 	return fullResponse, nil
 }
 
-// Handle slash commands
 func (m Model) handleSlashCommand(cmd string) (tea.Model, tea.Cmd) {
 	parts := strings.SplitN(cmd, " ", 2)
 	command := parts[0]
@@ -472,13 +598,21 @@ Available commands:
 	return m, nil
 }
 
-// Run starts the TUI
 func Run(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) error {
 	m := Initialize(opts, clientArgs, db)
-	p := tea.NewProgram(m, tea.WithAltScreen())
 
-	_, err := p.Run()
-	return err
+	p := tea.NewProgram(
+		m,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
+
+	if _, err := p.Run(); err != nil {
+		log.Printf("Error running program: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func min(a, b int) int {

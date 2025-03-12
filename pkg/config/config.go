@@ -2,12 +2,14 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/term"
+	// "golang.org/x/term"
+	"github.com/charmbracelet/x/term"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -17,33 +19,34 @@ import (
 
 // Add this to your Options struct
 type Options struct {
-	Model          string
-	Context        int
-	ContextLength  int
-	ContinueChat   bool
-	DumpConfig     bool
-	LogFileName    string
-	DBFileName     string
-	DBTable        string
-	SystemPrompt   string
-	MaxTokens      int
-	Temperature    float32
-	ConversationID int
-	ScreenWidth    int
-	ScreenHeight   int
-	TabWidth       int
-	Quiet          bool
-	NoRecord       bool
-	UseTUI         bool // Add this field
-	NoOutput       bool
+	Model           string
+	Context         int
+	ContextLength   int
+	ContinueChat    bool
+	DumpConfig      bool
+	LogFileName     string
+	DBFileName      string
+	DBTable         string
+	SystemPrompt    string
+	MaxTokens       int
+	Temperature     float32
+	ConversationID  int
+	ScreenWidth     int
+	ScreenTextWidth int
+	ScreenHeight    int
+	TabWidth        int
+	Quiet           bool
+	NoRecord        bool
+	UseTUI          bool // Add this field
+	NoOutput        bool
 }
 
 const Version = "0.3.3"
 
 const (
-	MaxTermWidth = 80
-	widthPad     = 5
-	TabWidth     = 4
+	MaxTermTextWidth = 80
+	widthPad         = 5
+	TabWidth         = 4
 )
 
 var (
@@ -138,25 +141,26 @@ func Initialize() (*Options, error) {
 	}
 
 	return &Options{
-		Model:          pflag.Lookup("model").Value.String(),
-		Context:        viper.GetInt("context"),
-		ContextLength:  viper.GetInt("model.context_length"),
-		ContinueChat:   viper.GetBool("continue"),
-		DumpConfig:     viper.GetBool("dump-config"),
-		LogFileName:    os.ExpandEnv(viper.GetString("log.file")),
-		DBFileName:     os.ExpandEnv(viper.GetString("database.file")),
-		DBTable:        viper.GetString("database.table"),
-		SystemPrompt:   viper.GetString("model.system_prompt"),
-		MaxTokens:      viper.GetInt("model.max_tokens"),
-		Temperature:    float32(viper.GetFloat64("model.temperature")),
-		ConversationID: viper.GetInt("id"),
-		ScreenWidth:    min(viper.GetInt("screen.width"), MaxTermWidth) - widthPad,
-		ScreenHeight:   viper.GetInt("screen.height"),
-		TabWidth:       TabWidth,
-		Quiet:          viper.GetBool("quiet"),
-		NoRecord:       viper.GetBool("no-record"),
-		UseTUI:         viper.GetBool("tui"),
-		NoOutput:       false,
+		Model:           pflag.Lookup("model").Value.String(),
+		Context:         viper.GetInt("context"),
+		ContextLength:   viper.GetInt("model.context_length"),
+		ContinueChat:    viper.GetBool("continue"),
+		DumpConfig:      viper.GetBool("dump-config"),
+		LogFileName:     os.ExpandEnv(viper.GetString("log.file")),
+		DBFileName:      os.ExpandEnv(viper.GetString("database.file")),
+		DBTable:         viper.GetString("database.table"),
+		SystemPrompt:    viper.GetString("model.system_prompt"),
+		MaxTokens:       viper.GetInt("model.max_tokens"),
+		Temperature:     float32(viper.GetFloat64("model.temperature")),
+		ConversationID:  viper.GetInt("id"),
+		ScreenWidth:     viper.GetInt("screen.width"),
+		ScreenTextWidth: min(viper.GetInt("screen.width"), MaxTermTextWidth) - widthPad,
+		ScreenHeight:    viper.GetInt("screen.height"),
+		TabWidth:        TabWidth,
+		Quiet:           viper.GetBool("quiet"),
+		NoRecord:        viper.GetBool("no-record"),
+		UseTUI:          viper.GetBool("tui"),
+		NoOutput:        false,
 	}, nil
 }
 
@@ -216,10 +220,12 @@ func searchForConversation(search string) {
 }
 
 func determineScreenSize() (int, int) {
-	width, height, err := term.GetSize(int(os.Stdin.Fd()))
+	width, height, err := term.GetSize(0)
 	if err != nil {
 		return 80, 24
 	}
+
+	log.Printf("Screen size - width: %d, height: %d", width, height)
 
 	return width, height
 }
