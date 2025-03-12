@@ -227,7 +227,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		fmt.Println("Assistant: ")
 	}
 
-	resp, streamChan, err := client.Chat(args, opts.ScreenWidth, opts.TabWidth)
+	resp, streamChan, err := client.Chat(args, opts.ScreenTextWidth, opts.TabWidth)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
