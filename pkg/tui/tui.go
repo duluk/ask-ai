@@ -62,7 +62,6 @@ var (
 	// If using a system that doesn't have great support for fancy borders, just use plain ASCII
 	borderStyle = func() lipgloss.Border {
 		term := os.Getenv("TERM")
-		// if strings.Contains(term, "windows") || strings.Contains(term, "xterm") || strings.Contains(term, "tmux-256color") {
 		// tmux is not displaying the rounded corners very well
 		if strings.Contains(term, "tmux-256color") {
 			return lipgloss.NormalBorder()
