@@ -16,6 +16,17 @@ import (
 	"github.com/duluk/ask-ai/pkg/database"
 )
 
+// Layout constants
+const (
+	inputHeight    = 3 // Input box height
+	statusHeight   = 1 // Status line height
+	borderWidth    = 2 // Border width (left + right)
+	borderHeight   = 2 // Border height (top + bottom)
+	contentPadding = 1 // Padding inside components
+	contentMargin  = 4 // Total horizontal margin for content (borders + padding)
+)
+
+// Color constants
 const (
 	lipColorBlack        = "0"
 	lipColorDarkRed      = "1"
