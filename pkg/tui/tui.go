@@ -69,15 +69,15 @@ var (
 		return lipgloss.RoundedBorder()
 	}()
 
-	outputStyle = lipgloss.NewStyle().
+	viewportStyle = lipgloss.NewStyle().
 			BorderStyle(borderStyle).
 			BorderForeground(outputBorderColor).
-			Padding(1)
+			Padding(1) // Both vertical and horizontal
 
 	statusStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color(lipColorLightBlue)).
 			Foreground(lipgloss.Color(lipColorWhite)).
-			Padding(0, 1)
+			Padding(0, 1) // Vertical, Horizontal
 
 	inputStyle = lipgloss.NewStyle().
 			BorderStyle(borderStyle).
@@ -95,17 +95,17 @@ var (
 
 // Model represents the TUI state (this has nothing to do with LLMs)
 type Model struct {
-	viewport   viewport.Model
-	textInput  textinput.Model
-	content    string
-	opts       *config.Options
-	clientArgs LLM.ClientArgs
-	db         *database.ChatDB
-	width      int
-	height     int
-	ready      bool
-	processing bool
-	statusMsg  string
+	viewport     viewport.Model
+	textInput    textinput.Model
+	content      string
+	opts         *config.Options
+	clientArgs   LLM.ClientArgs
+	db           *database.ChatDB
+	windowWidth  int
+	windowHeight int
+	ready        bool
+	processing   bool
+	statusMsg    string
 }
 
 // Create a new TUI model ^
@@ -119,12 +119,39 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	// Ctrl+K: Delete to end of line
 	// Ctrl+U: Delete to beginning of line
 
+	/*
+		type TextInput struct {
+		    Value             string         // Current input value
+		    Prompt            string         // Prompt displayed before input
+		    Placeholder       string         // Placeholder when empty
+		    Width             int            // Width of the input field
+		    Cursor            cursor.Model   // Cursor model
+		    CharLimit         int            // Character limit
+		    Style             lipgloss.Style // Text styling
+		    PromptStyle       lipgloss.Style // Prompt styling
+		    PlaceholderStyle  lipgloss.Style // Placeholder styling
+		}
+	*/
+
 	ti := textinput.New()
 	ti.Placeholder = "Ask a question..."
 	ti.Focus()
 	ti.CharLimit = 0
 
 	ti.Width = opts.ScreenWidth
+
+	/*
+		type Viewport struct {
+		    Width      int           // Total width including borders
+		    Height     int           // Total height including borders
+		    Style      lipgloss.Style // Style for the viewport (borders, padding)
+		    KeyMap     KeyMap        // Key mappings for scrolling
+		    YPosition  int           // Current Y scroll position
+		    YOffset    int           // Y offset for content
+		    HighOffset int           // Highest scrollable offset
+		    content    strings.Builder // Content inside viewport
+		}
+	*/
 
 	// Scrollable viewport for chat history
 	// Adjust viewport height calculation
@@ -134,18 +161,18 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 
 	vp := viewport.New(opts.ScreenWidth, viewportHeight)
 	vp.SetContent("")
-	vp.YPosition = 0
+	vp.YPosition = 0 // Bubble Tea/Lipgloss will adjust for the border
 
 	return Model{
-		viewport:   vp,
-		textInput:  ti,
-		content:    "",
-		opts:       opts,
-		clientArgs: clientArgs,
-		db:         db,
-		statusMsg:  fmt.Sprintf("Model: %s | ConvID: %d | Ctrl+C: Exit | /help: Commands", *clientArgs.Model, *clientArgs.ConvID),
-		width:      opts.ScreenWidth,
-		height:     viewportHeight,
+		viewport:     vp,
+		textInput:    ti,
+		content:      "",
+		opts:         opts,
+		clientArgs:   clientArgs,
+		db:           db,
+		statusMsg:    fmt.Sprintf("Model: %s | ConvID: %d | Ctrl+C: Exit | /help: Commands", *clientArgs.Model, *clientArgs.ConvID),
+		windowWidth:  opts.ScreenWidth,
+		windowHeight: viewportHeight,
 	}
 }
 
@@ -204,10 +231,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		m.height = msg.Height
-		m.width = msg.Width
+		m.windowWidth = msg.Width
+		m.windowHeight = msg.Height
 
 		if !m.ready {
+			// The viewport is created in Initialize
 			m.ready = true
 		}
 
@@ -215,8 +243,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Use consistent height calculations across the application
 		totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding
 		// Add a small buffer to prevent content from being hidden
-		viewportHeight := m.height - totalFixedHeight
-		contentWidth := m.width - contentMargin
+		viewportHeight := m.windowHeight - totalFixedHeight
+		contentWidth := m.windowWidth - contentMargin
 
 		// NOTE: this is the inside width, for the text itself - so
 		// it affects things like wrapping. If no adjustment is made,
@@ -261,8 +289,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(
 			func() tea.Msg {
 				return tea.WindowSizeMsg{
-					Width:  m.width,
-					Height: m.height,
+					Width:  m.windowWidth,
+					Height: m.windowHeight - 2,
 				}
 			},
 		)
@@ -287,8 +315,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = []tea.Cmd{
 			func() tea.Msg {
 				return tea.WindowSizeMsg{
-					Width:  m.width,
-					Height: m.height,
+					Width:  m.windowWidth,
+					Height: m.windowHeight,
 				}
 			},
 		}
@@ -342,10 +370,10 @@ func (m Model) View() string {
 
 	// NOTE: This accounts for the border on viewport and input, as in it makes
 	// them line up correctly. Why 2? /shrug
-	contentWidth := m.width - 2
+	contentWidth := m.windowWidth - 2
 
 	// Layout the components
-	outputBox := outputStyle.
+	viewportBox := viewportStyle.
 		Width(contentWidth).
 		Height(m.viewport.Height).
 		Render(m.viewport.View())
@@ -353,7 +381,7 @@ func (m Model) View() string {
 	statusLine := statusStyle.
 		// Reduce width by 2 to account for left and right spacing; this allows
 		// it to line up with the borders better
-		Width(m.width - 2).
+		Width(m.windowWidth - 2).
 		// Align(lipgloss.Center).  // this centers the text
 		Render(m.statusMsg)
 
@@ -364,7 +392,7 @@ func (m Model) View() string {
 	// Ensure proper vertical layout with fixed heights
 	return fmt.Sprintf(
 		"%s\n%s%s%s\n%s",
-		outputBox,
+		viewportBox,
 		" ", statusLine, " ",
 		inputBox,
 	)
@@ -409,9 +437,9 @@ func (m *Model) processPrompt() (string, error) {
 	model := *m.clientArgs.Model
 
 	switch model {
-	// case "chatgpt":
-	// 	api_url := "https://api.openai.com/v1/"
-	// 	client = LLM.NewOpenAI("openai", api_url)
+	case "chatgpt":
+		api_url := "https://api.openai.com/v1/"
+		client = LLM.NewOpenAI("openai", api_url)
 	// case "claude":
 	// 	client = LLM.NewAnthropic()
 	// case "gemini":
@@ -472,37 +500,10 @@ func (m *Model) processPrompt() (string, error) {
 
 		// Send the chunk to the Bubble Tea program
 		m.content += resp.Content
-		// m.viewport.SetContent(m.content)
-		// m.viewport.GotoBottom()
 
-		// Create a command to update the UI
-		cmds := []tea.Cmd{
-			func() tea.Msg {
-				return streamChunkMsg{
-					chunk: resp.Content,
-					done:  resp.Done,
-				}
-			},
-		}
-
-		// Execute the commands immediately
-		for _, cmd := range cmds {
-			if msg := cmd(); msg != nil {
-				m.Update(msg)
-			}
-		}
-
-		// TODO: this may look ugly...
-		// Force a screen refresh after each chunk
-		// tea.Batch(func() tea.Msg {
-		// 	return tea.WindowSizeMsg{
-		// 		Width:  m.width,
-		// 		Height: m.height,
-		// 	}
-		// })
-
-		// Add a small delay to ensure proper rendering
-		// time.Sleep(10 * time.Millisecond)
+		// Update the viewport with each chunk to enable streaming
+		m.viewport.SetContent(m.content)
+		m.viewport.GotoBottom()
 
 		if resp.Done {
 			m.viewport.GotoBottom()
@@ -633,7 +634,11 @@ func Run(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) e
 	p := tea.NewProgram(
 		m,
 		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
+		tea.WithMouseCellMotion(), // Enable mouse support
+		// tea.WithInputTTY(),         // Enable input from TTY
+		// tea.WithOutput(os.Stderr),  // Redirect output to stderr
+		// tea.WithInput(os.Stdin),    // Redirect input from stdin
+		// tea.WithInputTTY(),         // Enable input from TTY
 	)
 
 	if _, err := p.Run(); err != nil {
