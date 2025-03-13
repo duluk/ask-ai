@@ -22,7 +22,7 @@ const (
 	statusHeight   = 1 // Status line height
 	borderWidth    = 2 // Border width (left + right)
 	borderHeight   = 2 // Border height (top + bottom)
-	contentPadding = 1 // Padding inside components
+	contentPadding = 2 // Padding inside components
 	contentMargin  = 4 // Total horizontal margin for content (borders + padding)
 )
 
@@ -127,13 +127,12 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	ti.Width = opts.ScreenWidth
 
 	// Scrollable viewport for chat history
-	// TODO: remove this? I can't figure out what this affects.
-	inputHeight := 3  // Input box height
-	statusHeight := 1 // Status line height
-	borderHeight := 2 // Account for borders
-	adjustedHeight := inputHeight + statusHeight + borderHeight
+	// Adjust viewport height calculation
+	totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding
+	// Add a small buffer to prevent content from being hidden
+	viewportHeight := opts.ScreenHeight - totalFixedHeight
 
-	vp := viewport.New(opts.ScreenWidth, opts.ScreenHeight-adjustedHeight)
+	vp := viewport.New(opts.ScreenWidth, viewportHeight)
 	vp.SetContent("")
 	vp.YPosition = 0
 
@@ -146,7 +145,7 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 		db:         db,
 		statusMsg:  fmt.Sprintf("Model: %s | ConvID: %d | Ctrl+C: Exit | /help: Commands", *clientArgs.Model, *clientArgs.ConvID),
 		width:      opts.ScreenWidth,
-		height:     opts.ScreenHeight - adjustedHeight,
+		height:     viewportHeight,
 	}
 }
 
@@ -205,7 +204,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		// log.Printf("Window size message: %dx%d", msg.Width, msg.Height)
 		m.height = msg.Height
 		m.width = msg.Width
 
@@ -213,30 +211,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ready = true
 		}
 
-		// log.Printf("Window size: %dx%d", m.width, m.height)
-
-		// Adjust viewport and input sizes
 		// NOTE: This affects the viewport height/top border
-		inputHeight := 3  // Input box height
-		statusHeight := 1 // Status line height
-		// borderHeight := 2   // Account for borders
-		adjustedHeight := 4 // padding to show the top border, I don't know why
-		// adjustedHeight := inputHeight + statusHeight + borderHeight - 6
-
-		viewportHeight := m.height - inputHeight - statusHeight - adjustedHeight
-		// viewportHeight := m.height - adjustedHeight
-		adjustedWidth := m.width - 2 // Account for left and right borders
+		// Use consistent height calculations across the application
+		totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding
+		// Add a small buffer to prevent content from being hidden
+		viewportHeight := m.height - totalFixedHeight
+		contentWidth := m.width - contentMargin
 
 		// NOTE: this is the inside width, for the text itself - so
 		// it affects things like wrapping. If no adjustment is made,
 		// the text doesn't wrap correctly. Why 4? /shrug
-		// adjustedWidth := m.width - 4
-		m.viewport.Width = adjustedWidth
+		// Update viewport dimensions
+		m.viewport.Width = contentWidth
 		m.viewport.Height = viewportHeight
-		m.textInput.Width = adjustedWidth
+		m.textInput.Width = contentWidth
 
+		// Ensure content is set
 		m.viewport.SetContent(m.content)
-		m.viewport.GotoBottom()
+
+		// Only scroll to bottom during processing or when explicitly requested
+		if m.processing {
+			m.viewport.GotoBottom()
+		}
 
 		return m, nil
 
@@ -261,7 +257,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
 
-		// Force immediate render
+		// Force a proper viewport refresh
 		return m, tea.Batch(
 			func() tea.Msg {
 				return tea.WindowSizeMsg{
@@ -272,12 +268,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 
 	case responseMsg:
-		// log.Printf("Response message received")
 		m.processing = false
 
 		if msg.err != nil {
 			m.statusMsg = lipgloss.NewStyle().Foreground(lipgloss.Color(lipColorRed)).Render("Error: " + msg.err.Error())
-			// m.statusMsg = fmt.Sprintf("Error: %s", msg.err)
 			return m, nil
 		}
 
@@ -285,20 +279,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		assistantMsg := assistantStyle.Render("Assistant: ") + msg.response + "\n\n"
 		m.content += assistantMsg
 
-		// Make sure to set the content and scroll to bottom
+		// Update viewport and ensure it's properly rendered
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
 
-		// TODO: commented out because the redraw looked awkward and it isn't
-		// needed AFAICT; I think this was an attempt to fix the border issue,
-		// which wasn't an issue. Probably can be removed at some point.
-		// Force a redraw of the viewport to ensure proper rendering
-		cmds = []tea.Cmd{func() tea.Msg {
-			return tea.WindowSizeMsg{
-				Width:  m.width,
-				Height: m.height,
-			}
-		}}
+		// Force a complete viewport refresh
+		cmds = []tea.Cmd{
+			func() tea.Msg {
+				return tea.WindowSizeMsg{
+					Width:  m.width,
+					Height: m.height,
+				}
+			},
+		}
 
 		// Update status message
 		m.statusMsg = fmt.Sprintf("Model: %s | ConvID: %d | /help for commands", *m.clientArgs.Model, *m.clientArgs.ConvID)
@@ -307,12 +300,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle viewport updates
-	m.viewport, cmd = m.viewport.Update(msg)
-	cmds = append(cmds, cmd)
+	if m.textInput.Focused() {
+		// When text input is focused, only handle specific keys and mouse
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyPgUp:
+				m.viewport.LineUp(m.viewport.Height)
+			case tea.KeyPgDown:
+				m.viewport.LineDown(m.viewport.Height)
+			case tea.KeyUp:
+				m.viewport.LineUp(1)
+			case tea.KeyDown:
+				m.viewport.LineDown(1)
+			}
+		case tea.MouseMsg:
+			m.viewport, cmd = m.viewport.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	} else {
+		// When not focused on text input, handle all viewport updates
+		m.viewport, cmd = m.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	// Handle text input updates
-	m.textInput, cmd = m.textInput.Update(msg)
-	cmds = append(cmds, cmd)
+	var tiCmd tea.Cmd
+	m.textInput, tiCmd = m.textInput.Update(msg)
+	if tiCmd != nil {
+		cmds = append(cmds, tiCmd)
+	}
 
 	return m, tea.Batch(cmds...)
 }
