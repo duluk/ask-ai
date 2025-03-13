@@ -160,33 +160,3 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 
 	return nil
 }
-
-// Add this method to the OpenAI struct
-func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
-	// Not yet implemented - just use the non-streaming version for now
-	resp, err := cs.Chat(args, termWidth, tabWidth)
-	if err != nil {
-		stream <- StreamResponse{
-			Content: "",
-			Done:    true,
-			Error:   err,
-		}
-		return err
-	}
-
-	// Send the full response as one chunk
-	stream <- StreamResponse{
-		Content: resp.Text,
-		Done:    false,
-		Error:   nil,
-	}
-
-	// Signal completion
-	stream <- StreamResponse{
-		Content: "",
-		Done:    true,
-		Error:   nil,
-	}
-
-	return nil
-}
