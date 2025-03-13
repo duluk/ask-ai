@@ -10,11 +10,15 @@
 - Lint/Check: `make check` (runs go vet)
 - Format code: `make fmt` (runs go fmt ./...)
 - Install: `make install`
+- Run TUI mode: `ask-ai --tui` or with flag `-tui`
 
 ### TypeScript Version
 - Install dependencies: `npm install`
 - Build: `npm run build`
 - Run directly: `npm run start -- [args]`
+- Run TUI mode: `npm run tui`
+- Lint code: `npm run lint`
+- Format code: `npm run format`
 - Install globally: `npm install -g`
 
 ## Code Style Guidelines
@@ -35,6 +39,17 @@
 - Follow standard ES module imports
 - Use async/await for asynchronous operations
 - Maintain consistent error handling patterns
+- Follow Jest patterns for tests with proper mocking
+
+## TUI Mode
+- Special commands in TUI:
+  - `/exit`, `/quit` - Exit the application
+  - `/help`, `/?` - Show help message
+  - `/model` - Show current model
+  - `/model NAME` - Change model to NAME
+  - `/id` - Show conversation ID
+  - `/clear` - Clear conversation history
+  - `/context` - Show current context
 
 ## Project Structure
 - cmd/ask-ai/main.go: Entry point with CLI handling for Go version
