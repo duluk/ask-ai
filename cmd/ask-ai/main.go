@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -42,6 +43,8 @@ func main() {
 		fmt.Println("Error with chat log file: ", err)
 	}
 	defer log_fd.Close()
+
+	log.SetOutput(log_fd)
 
 	// If DB exists, it just opens it; otherwise, it creates it first
 	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
