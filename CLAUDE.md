@@ -1,43 +1,21 @@
-# Ask-AI Development Guide
+# ask-ai Project Guidelines
 
-## Build & Test Commands
-
-### Go Version
-- Build: `make` or `make build`
-- Test all: `make test` 
-- Test verbose: `make test VERBOSE=1`
-- Test single: `go test -v ./pkg/[package]/[file]_test.go`
-- Lint/Check: `make check` (runs go vet)
-- Format code: `make fmt` (runs go fmt ./...)
+## Build and Run Commands
+- Build project: `make` or `go build cmd/ask-ai/main.go`
+- Run tests: `make test` (all tests) or `go test ./pkg/[module]` (specific module)
+- Run specific test: `go test -run [TestName] ./pkg/[module]`
+- Format code: `make fmt` or `go fmt ./...`
+- Check code: `make check` or `go vet ./...`
 - Install: `make install`
+- Run: `bin/ask-ai [args]` or `make run`
 
-### TypeScript Version
-- Install dependencies: `npm install`
-- Build: `npm run build`
-- Run directly: `npm run start -- [args]`
-- Install globally: `npm install -g`
-
-## Code Style Guidelines
-
-### Go
-- Imports: Standard library first, third-party second, project imports last
-- Error handling: Early returns with meaningful error messages
-- Types: Define interfaces in pkg/LLM/types.go for client interactions
-- Naming: Go standard camelCase variables, PascalCase for exported entities
-- Comments: Document public functions/types with meaningful descriptions
-- Keep functions focused and under 50 lines when possible
-- Use contexts for operation control where appropriate
-- Favor composition over inheritance
-- Follow Go standard project layout with cmd/ and pkg/ directories
-
-### TypeScript
-- Use TypeScript types for all variables and functions
-- Follow standard ES module imports
-- Use async/await for asynchronous operations
-- Maintain consistent error handling patterns
-
-## Project Structure
-- cmd/ask-ai/main.go: Entry point with CLI handling for Go version
-- pkg/: Core functionality organized by provider and responsibility
-- ts/: TypeScript implementation
-- Modular design enables adding new LLM providers with minimal changes
+## Code Style
+- **Naming**: Use CamelCase for public functions, lowerCamelCase for private functions
+- **Packages**: Organize code in domain-specific packages under `pkg/`
+- **Imports**: Group standard library, external libraries, and project imports with blank line separation
+- **Error Handling**: Always check errors and return them with context (`fmt.Errorf("context: %w", err)`)
+- **Tests**: Include test files in same package with `_test.go` suffix 
+- **Comments**: Document public functions with meaningful descriptions 
+- **Line Length**: Keep lines under 80 characters where possible
+- **Logging**: Use structured, context-rich logging messages
+- **Types**: Declare interface types for dependency injection and testability
