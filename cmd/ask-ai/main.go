@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,6 +14,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/LLM"
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
+	"github.com/duluk/ask-ai/pkg/logger"
 )
 
 // I'm probably writing "Ruby Go"...
@@ -44,7 +45,17 @@ func main() {
 	}
 	defer log_fd.Close()
 
-	log.SetOutput(log_fd)
+	// log.SetOutput(log_fd)
+	err = logger.Initialize(logger.Config{
+		Level:      slog.LevelInfo,
+		Format:     "json",
+		FilePath:   opts.LogFileName,
+		MaxSize:    10, // MB
+		MaxBackups: 5,
+		MaxAge:     30,
+		Compress:   true,
+		UseConsole: false,
+	})
 
 	// If DB exists, it just opens it; otherwise, it creates it first
 	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
@@ -68,9 +79,10 @@ func main() {
 			model = promptContext[len(promptContext)-1].Model
 		}
 		if err != nil {
-			fmt.Println("Error loading conversation from log: ", err)
+			fmt.Println("Error loading conversation from DB: ", err)
 		}
 	} else if opts.ContinueChat {
+		// TODO: this needs to come from the DB
 		promptContext, err = LLM.ContinueConversation(log_fd)
 		if !pflag.CommandLine.Changed("model") {
 			model = promptContext[len(promptContext)-1].Model
@@ -79,6 +91,7 @@ func main() {
 			fmt.Println("Error reading log for continuing chat: ", err)
 		}
 	} else if opts.Context != 0 {
+		// TODO: this needs to come from the DB (or removed as an option; this is outdated)
 		promptContext, err = LLM.LastNChats(log_fd, opts.Context)
 		if err != nil {
 			fmt.Println("Error loading chat context from log: ", err)
@@ -96,6 +109,7 @@ func main() {
 
 	// Make sure we are setting the correct conversation id when not provided
 	if opts.ConversationID == 0 {
+		// TODO: this needs to come from the DB
 		clientArgs.ConvID = LLM.FindLastConversationID(log_fd)
 		if clientArgs.ConvID == nil {
 			// Most likely this is the first conversation
@@ -160,6 +174,7 @@ func main() {
 			chatWithLLM(opts, clientArgs, db)
 
 			opts.ContinueChat = true
+			// TODO: this needs to come from the DB
 			promptContext, err = LLM.ContinueConversation(log_fd)
 			if err != nil {
 				fmt.Println("Error reading log for continuing chat: ", err)
@@ -233,6 +248,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	// timestamp when the function is executed.
 
 	if !opts.NoRecord {
+		// TODO: the chat should not be logged to the file anymore
 		LLM.LogChat(
 			log,
 			"Assistant",
