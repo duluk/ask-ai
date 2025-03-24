@@ -259,6 +259,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	// timestamp when the function is executed.
 
 	if !opts.NoRecord {
+		// TODO: the chat should not be logged to the file anymore
 		LLM.LogChat(
 			log,
 			"Assistant",
