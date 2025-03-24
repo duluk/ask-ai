@@ -12,6 +12,7 @@ import os from 'os';
 
 interface TUIOptions {
     model?: string;
+    debug?: boolean;
 }
 
 export async function startTUI(options: TUIOptions = {}) {
