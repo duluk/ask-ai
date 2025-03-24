@@ -14,6 +14,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/LLM"
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
+	"github.com/duluk/ask-ai/pkg/logger"
 	"github.com/duluk/ask-ai/pkg/tui" // Add this import
 )
 
