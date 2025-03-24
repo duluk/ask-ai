@@ -314,6 +314,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 		cmds = append(cmds, tick())
 
+	case TickMsg:
+		m.viewport.GotoBottom()
+		cmds = append(cmds, tick())
+
 	case responseMsg:
 		m.processing = false
 
