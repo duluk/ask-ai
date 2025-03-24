@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -24,6 +25,7 @@ const (
 	borderHeight   = 2 // Border height (top + bottom)
 	contentPadding = 2 // Padding inside components
 	contentMargin  = 4 // Total horizontal margin for content (borders + padding)
+	testPadding    = 0 // Padding for testing
 )
 
 // Color constants
@@ -108,6 +110,9 @@ type Model struct {
 	statusMsg    string
 }
 
+// TickMsg is used for periodic updates
+type TickMsg time.Time
+
 // Create a new TUI model ^
 func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) Model {
 	// log.Printf("Initializing with screen size: %dx%d", opts.ScreenWidth, opts.ScreenHeight)
@@ -155,7 +160,7 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 
 	// Scrollable viewport for chat history
 	// Adjust viewport height calculation
-	totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding
+	totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding + testPadding
 	// Add a small buffer to prevent content from being hidden
 	viewportHeight := opts.ScreenHeight - totalFixedHeight
 
@@ -178,7 +183,17 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 
 // Init implements tea.Model
 func (m Model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(
+		textinput.Blink,
+		tick(),
+	)
+}
+
+// tick sends a message every second
+func tick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return TickMsg(t)
+	})
 }
 
 // Update implements tea.Model
@@ -241,7 +256,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// NOTE: This affects the viewport height/top border
 		// Use consistent height calculations across the application
-		totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding
+		totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding + testPadding
 		// Add a small buffer to prevent content from being hidden
 		viewportHeight := m.windowHeight - totalFixedHeight
 		contentWidth := m.windowWidth - contentMargin
@@ -294,6 +309,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			},
 		)
+
+	case TickMsg:
+		m.viewport.GotoBottom()
+		cmds = append(cmds, tick())
 
 	case responseMsg:
 		m.processing = false
