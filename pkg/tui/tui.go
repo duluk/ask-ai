@@ -283,17 +283,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case streamChunkMsg:
 		// Update viewport with new content
 		m.viewport.SetContent(m.content)
-		m.viewport.GotoBottom()
 
+		m.viewport, cmd = m.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+
+		// Update viewport with new content
 		// Force a proper viewport refresh
-		return m, tea.Batch(
-			func() tea.Msg {
-				return tea.WindowSizeMsg{
-					Width:  m.windowWidth,
-					Height: m.windowHeight - 2,
-				}
-			},
-		)
+		cmds = append(cmds, func() tea.Msg {
+			return tea.WindowSizeMsg{
+				Width:  m.windowWidth,
+				Height: m.windowHeight,
+			}
+		})
+
+		m.viewport.GotoBottom()
+		return m, tea.Batch(cmds...)
 
 	case responseMsg:
 		m.processing = false
