@@ -3,10 +3,7 @@ package LLM
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
-
-	"github.com/duluk/ask-ai/pkg/linewrap"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -22,7 +19,31 @@ func NewOpenAI(apiLLC string, apiURL string) *OpenAI {
 	return &OpenAI{APIKey: apiKey, Client: client}
 }
 
-func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error) {
+func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, <-chan StreamResponse, error) {
+	// Create a channel for streaming responses
+	responseChan := make(chan StreamResponse)
+
+	// Start a goroutine to handle streaming
+	go func() {
+		defer close(responseChan)
+
+		// Use the streaming implementation
+		err := cs.ChatStream(args, termWidth, tabWidth, responseChan)
+		if err != nil {
+			responseChan <- StreamResponse{
+				Content: "",
+				Done:    true,
+				Error:   err,
+			}
+		}
+	}()
+
+	// Return an empty ClientResponse since the actual response will be streamed
+	// The full response can be collected by the caller if needed
+	return ClientResponse{}, responseChan, nil
+}
+
+func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
 	client := cs.Client
 
 	var msgCtx string
@@ -58,9 +79,9 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 		model = ChatModelDeepSeekReasoner
 	}
 
-	myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
+	// myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	ctx := context.Background()
-	stream := client.Chat.Completions.NewStreaming(
+	openaiStream := client.Chat.Completions.NewStreaming(
 		ctx,
 		openai.ChatCompletionNewParams{
 			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
@@ -84,42 +105,58 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 		},
 	)
 
-	// Apparently what happens with stream is that the server chunks the
-	// response according to its own internal desires and whims, presenting the
-	// result as if it's a stream of responses, which looks more
-	// conversational.
-	var resp string
-	var usage *openai.CompletionUsage
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
-	for stream.Next() {
-		evt := stream.Current()
+	// Create a LineWrapper for terminal output if needed
+	// wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
+
+	// Process the stream in chunks
+	for openaiStream.Next() {
+		evt := openaiStream.Current()
 		if len(evt.Choices) > 0 {
 			data := evt.Choices[0].Delta.Content
-			if _, err := wrapper.Write([]byte(data)); err != nil {
-				fmt.Printf("Error writing to wrapper: %s\n", err)
-				return ClientResponse{}, err
+
+			// Only send non-empty content
+			if data != "" {
+				// // Write to terminal if not disabled
+				// if !args.DisableOutput {
+				// 	if _, err := wrapper.Write([]byte(data)); err != nil {
+				// 		err := fmt.Errorf("error writing to wrapper: %s", err)
+				// 		stream <- StreamResponse{
+				// 			Content: "",
+				// 			Done:    true,
+				// 			Error:   err,
+				// 		}
+				// 		return err
+				// 	}
+				// }
+
+				// Send data to the stream channel
+				stream <- StreamResponse{
+					Content: data,
+					Done:    false,
+					Error:   nil,
+				}
 			}
-			resp += data
 		}
-		usage = &evt.Usage
 	}
 
-	var stats *openai.CompletionUsage
-	if usage != nil {
-		stats = usage
+	// Check for errors
+	if openaiStream.Err() != nil {
+		err := openaiStream.Err()
+		fmt.Printf("Error: %s\n", err)
+		stream <- StreamResponse{
+			Content: "",
+			Done:    true,
+			Error:   err,
+		}
+		return err
 	}
 
-	if stream.Err() != nil {
-		fmt.Printf("Error: %s\n", stream.Err())
-		return ClientResponse{}, stream.Err()
+	// Signal completion
+	stream <- StreamResponse{
+		Content: "",
+		Done:    true,
+		Error:   nil,
 	}
 
-	r := ClientResponse{
-		Text:         resp,
-		InputTokens:  int32(stats.PromptTokens),
-		OutputTokens: int32(stats.CompletionTokens), // Is this correct?
-		MyEstInput:   myInputEstimate,
-	}
-
-	return r, nil
+	return nil
 }

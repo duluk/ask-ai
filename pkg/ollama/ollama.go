@@ -1,6 +1,7 @@
 package ollama
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,7 @@ type ChatCompletionRequest struct {
 	Messages    []Message `json:"messages"`
 	MaxTokens   int       `json:"max_tokens,omitempty"`
 	Temperature float64   `json:"temperature,omitempty"`
+	Stream      bool      `json:"stream,omitempty"`
 }
 
 type ChatCompletionResponse struct {
@@ -51,6 +53,24 @@ func NewClient(apiKey string) *Client {
 		HTTPClient: &http.Client{},
 	}
 }
+
+type ChatCompletionChunk struct {
+	ID                string `json:"id"`
+	Object            string `json:"object"`
+	Created           int64  `json:"created"`
+	Model             string `json:"model"`
+	SystemFingerprint string `json:"system_fingerprint"`
+	Choices           []struct {
+		Index int `json:"index"`
+		Delta struct {
+			Role    string `json:"role,omitempty"`
+			Content string `json:"content,omitempty"`
+		} `json:"delta"`
+		FinishReason any `json:"finish_reason"`
+	} `json:"choices"`
+}
+
+type StreamHandler func(ChatCompletionChunk)
 
 func (c *Client) ChatCompletion(req ChatCompletionRequest) (*ChatCompletionResponse, error) {
 	requestData := ChatCompletionRequest{
@@ -111,3 +131,131 @@ func (c *Client) ChatCompletion(req ChatCompletionRequest) (*ChatCompletionRespo
 
 	return &response, nil
 }
+
+func (c *Client) ChatCompletionStream(req ChatCompletionRequest, handler StreamHandler) error {
+	req.Stream = true // Ensure streaming is enabled
+
+	// Use the same request structure as the non-streaming version
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %v", err)
+	}
+
+	url, err := url.Parse(OllamaBaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse URL: %v", err)
+	}
+
+	httpReq, err := http.NewRequest(
+		"POST",
+		url.String(),
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
+	httpReq.Header.Set("User-Agent", "ask-ai/0.0.3")
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
+
+	resp, err := c.HTTPClient.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	reader := bufio.NewReader(resp.Body)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading stream: %v", err)
+		}
+
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+
+		// Create a file and write the line to it
+		// f, err := os.Create("raw_data.json")
+		// if err != nil {
+		// 	return fmt.Errorf("error creating file: %v", err)
+		// }
+		// defer f.Close()
+		// f.Write(line) // I don't care if it fails
+
+		// Strip "data: " prefix from SSE format
+		if bytes.HasPrefix(line, []byte("data: ")) {
+			line = bytes.TrimPrefix(line, []byte("data: "))
+		}
+
+		// Skip any "data: [DONE]" messages
+		if string(line) == "[DONE]" {
+			continue
+		}
+
+		var chunk ChatCompletionChunk
+		if err := json.Unmarshal(line, &chunk); err != nil {
+			return fmt.Errorf("error unmarshaling chunk: %v\nRaw data: %s", err, string(line))
+		}
+
+		handler(chunk)
+	}
+
+	return nil
+}
+
+// Add this new method
+// func (c *Client) ChatCompletionStream(req ChatCompletionRequest, handler StreamHandler) error {
+// 	req.Stream = true // Ensure streaming is enabled
+//
+// 	requestBody, err := json.Marshal(req)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to marshal request: %v", err)
+// 	}
+//
+// 	resp, err := c.HTTPClient.Post(OllamaBaseURL, "application/json", bytes.NewBuffer(requestBody))
+// 	if err != nil {
+// 		return fmt.Errorf("failed to send request: %v", err)
+// 	}
+// 	defer resp.Body.Close()
+//
+// 	if resp.StatusCode != http.StatusOK {
+// 		body, _ := io.ReadAll(resp.Body)
+// 		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+// 	}
+//
+// 	reader := bufio.NewReader(resp.Body)
+// 	for {
+// 		line, err := reader.ReadBytes('\n')
+// 		if err == io.EOF {
+// 			break
+// 		}
+// 		if err != nil {
+// 			return fmt.Errorf("error reading stream: %v", err)
+// 		}
+//
+// 		line = bytes.TrimSpace(line)
+// 		if len(line) == 0 {
+// 			continue
+// 		}
+//
+// 		var chunk ChatCompletionChunk
+// 		if err := json.Unmarshal(line, &chunk); err != nil {
+// 			return fmt.Errorf("error unmarshaling chunk: %v", err)
+// 		}
+//
+// 		handler(chunk)
+// 	}
+//
+// 	return nil
+// }
