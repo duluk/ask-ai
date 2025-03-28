@@ -199,8 +199,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	// log.Printf("Received message type: %T", msg)
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -310,10 +308,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	// TODO: again this is probably not needed
-	case TickMsg:
-		m.viewport.GotoBottom()
-		cmds = append(cmds, tick())
-
 	case TickMsg:
 		m.viewport.GotoBottom()
 		cmds = append(cmds, tick())
