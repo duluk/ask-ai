@@ -144,7 +144,7 @@ func Error(msg string, args ...any) {
 // WithValues returns a new logger with the given key-value pairs. Eg:
 // userLogger := logger.WithValues("user_id", "12345")
 // userLogger.Info("logged in")
-//
+
 // func WithValues(keyValues ...any) *slog.Logger {
 // 	logger := Get()
 // 	// Convert key-value pairs to attributes
