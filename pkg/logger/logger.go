@@ -1,5 +1,26 @@
 package logger
 
+// Usage:
+// In main.go:
+// err := logger.Initialize(logger.Config{
+//     Level:      slog.LevelInfo,
+//     Format:     "json",
+//     FilePath:   "/var/log/myapp/app.log",
+//     MaxSize:    10,
+//     MaxBackups: 5,
+//     MaxAge:     30,
+//     Compress:   true,
+//     UseConsole: true, // Also log to console
+// })
+// In any package:
+// func SomeFunction() {
+//     logger.Info("Something happened", "key", "value")
+//
+//     // Or get the logger directly
+//     log := logger.Get()
+//     log.Debug("Debug info")
+// }
+
 import (
 	"io"
 	"log/slog"
@@ -33,27 +54,6 @@ type Config struct {
 	Compress   bool
 	UseConsole bool // also log to console
 }
-
-// Usage:
-// In main.go:
-// err := logger.Initialize(logger.Config{
-//     Level:      slog.LevelInfo,
-//     Format:     "json",
-//     FilePath:   "/var/log/myapp/app.log",
-//     MaxSize:    10,
-//     MaxBackups: 5,
-//     MaxAge:     30,
-//     Compress:   true,
-//     UseConsole: true, // Also log to console
-// })
-// In any package:
-// func SomeFunction() {
-//     logger.Info("Something happened", "key", "value")
-//
-//     // Or get the logger directly
-//     log := logger.Get()
-//     log.Debug("Debug info")
-// }
 
 func Initialize(config Config) error {
 	var err error
@@ -144,6 +144,7 @@ func Error(msg string, args ...any) {
 // WithValues returns a new logger with the given key-value pairs. Eg:
 // userLogger := logger.WithValues("user_id", "12345")
 // userLogger.Info("logged in")
+
 // func WithValues(keyValues ...any) *slog.Logger {
 // 	logger := Get()
 // 	// Convert key-value pairs to attributes
