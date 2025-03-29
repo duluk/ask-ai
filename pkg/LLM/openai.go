@@ -16,7 +16,7 @@ func NewOpenAI(apiLLC string, apiURL string) *OpenAI {
 		option.WithBaseURL(apiURL),
 	)
 
-	return &OpenAI{APIKey: apiKey, Client: client}
+	return &OpenAI{APIKey: apiKey, Client: &client}
 }
 
 func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, <-chan StreamResponse, error) {
@@ -84,22 +84,20 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 	openaiStream := client.Chat.Completions.NewStreaming(
 		ctx,
 		openai.ChatCompletionNewParams{
-			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			Messages: []openai.ChatCompletionMessageParamUnion{
 				openai.SystemMessage(*args.SystemPrompt),
 				openai.AssistantMessage(msgCtx),
 				openai.UserMessage(*args.Prompt),
-			}),
-			// N.B. - not all openai models support these, eg the o1 models (as of 20241125) and temperature
-			// Seed:        openai.Int(1), // Same seed/parameters will attempt to return the same results
-			Model:               openai.F(model),
+			},
+			Model:               model, // Directly use the model string or value
 			MaxCompletionTokens: openai.Int(int64(*args.MaxTokens)),
 			Temperature:         openai.Float(float64(*args.Temperature)), // Controls randomness (0.0 to 2.0)
-			StreamOptions: openai.F(openai.ChatCompletionStreamOptionsParam{
+			StreamOptions: openai.ChatCompletionStreamOptionsParam{
 				IncludeUsage: openai.Bool(true),
-			}),
-
-			// TopP:             openai.Float(1.0),                // Controls diversity via nucleus sampling; alter this or Temperature but not both
-			// N:                openai.Int(1),                    // Number of completions to generate
+			},
+			TopP: openai.Float(1.0), // Controls diversity via nucleus sampling
+			N:    openai.Int(1),     // Number of completions to generate
+			// These are not correct but possible I think:
 			// ResponseFormat:   openai.ChatResponseFormatDefault, // Format of the response
 			// Stop:             openai.String("\n"),              // Stop completion at this token
 		},
