@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log/slog"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -45,16 +45,7 @@ func main() {
 	}
 	defer log_fd.Close()
 
-	err = logger.Initialize(logger.Config{
-		Level:      slog.LevelInfo,
-		Format:     "json",
-		FilePath:   opts.LogFileName,
-		MaxSize:    10, // MB
-		MaxBackups: 5,
-		MaxAge:     30,
-		Compress:   true,
-		UseConsole: false,
-	})
+	log.SetOutput(log_fd)
 
 	// If DB exists, it just opens it; otherwise, it creates it first
 	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
