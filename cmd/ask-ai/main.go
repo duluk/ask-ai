@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -44,6 +45,17 @@ func main() {
 	}
 	defer log_fd.Close()
 
+	err = logger.Initialize(logger.Config{
+		Level:      slog.LevelInfo,
+		Format:     "json",
+		FilePath:   opts.LogFileName,
+		MaxSize:    10, // MB
+		MaxBackups: 5,
+		MaxAge:     30,
+		Compress:   true,
+		UseConsole: false,
+	})
+
 	// If DB exists, it just opens it; otherwise, it creates it first
 	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
 	if err != nil {
@@ -53,58 +65,46 @@ func main() {
 	defer db.Close()
 
 	model := opts.Model
+
 	/* CONTEXT? LOAD IT */
+	var convID int
 	var promptContext []LLM.LLMConversations
 	if opts.ConversationID != 0 {
-		// The user may provide `--continue` along with `--id`, but that's fine
-		// (and sensible). The intent is to load the one with the provided id.
-		// promptContext, err = LLM.LoadConversationFromLog(log_fd,
-		// opts.ConversationID)
-		promptContext, err = db.LoadConversationFromDB(opts.ConversationID)
-		if !pflag.CommandLine.Changed("model") {
-			// model, _ = db.GetModel(opts.ConversationID)
-			model = promptContext[len(promptContext)-1].Model
-		}
-		if err != nil {
-			fmt.Println("Error loading conversation from log: ", err)
-		}
+		convID = opts.ConversationID
 	} else if opts.ContinueChat {
-		promptContext, err = LLM.ContinueConversation(log_fd)
-		if !pflag.CommandLine.Changed("model") {
+		convID, err = db.GetLastConversationID()
+		if err != nil {
+			// convID will remain 0
+			fmt.Println("Error getting last conversation ID: ", err)
+		}
+	}
+
+	// Make sure we are using the correct conversation id when not provided
+	if convID == 0 {
+		// This is a 'new' chat, not continued from previous
+		convID, _ = db.GetLastConversationID()
+		convID++
+	} else {
+		// Either opts.id or opts.continue was used (determined above); we need
+		// to load the context from the convID
+		promptContext, err = db.LoadConversationFromDB(convID)
+		if err != nil {
+			fmt.Printf("error loading conversation from DB: %v", err)
+		}
+
+		if !pflag.CommandLine.Changed("model") && len(promptContext) > 0 {
 			model = promptContext[len(promptContext)-1].Model
-		}
-		if err != nil {
-			fmt.Println("Error reading log for continuing chat: ", err)
-		}
-	} else if opts.Context != 0 {
-		promptContext, err = LLM.LastNChats(log_fd, opts.Context)
-		if err != nil {
-			fmt.Println("Error loading chat context from log: ", err)
 		}
 	}
 
 	clientArgs := LLM.ClientArgs{
 		Model:        &model,
 		SystemPrompt: &opts.SystemPrompt,
+		ConvID:       &convID,
 		Context:      promptContext,
 		MaxTokens:    &opts.MaxTokens,
 		Temperature:  &opts.Temperature,
 		Log:          log_fd,
-	}
-
-	// Make sure we are setting the correct conversation id when not provided
-	if opts.ConversationID == 0 {
-		clientArgs.ConvID = LLM.FindLastConversationID(log_fd)
-		if clientArgs.ConvID == nil {
-			// Most likely this is the first conversation
-			clientArgs.ConvID = new(int)
-			*clientArgs.ConvID = 0
-		}
-		if !opts.ContinueChat {
-			(*clientArgs.ConvID)++
-		}
-	} else {
-		clientArgs.ConvID = &opts.ConversationID
 	}
 
 	// If TUI mode is enabled, start the TUI
@@ -170,7 +170,9 @@ func main() {
 			chatWithLLM(opts, clientArgs, db)
 
 			opts.ContinueChat = true
-			promptContext, err = LLM.ContinueConversation(log_fd)
+			// TODO: this needs to come from the DB
+			// promptContext, err = LLM.ContinueConversation(log_fd)
+			promptContext, err = db.LoadConversationFromDB(*clientArgs.ConvID)
 			if err != nil {
 				fmt.Println("Error reading log for continuing chat: ", err)
 			}

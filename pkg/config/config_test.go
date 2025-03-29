@@ -77,7 +77,6 @@ func TestInitialize(t *testing.T) {
 				assert.Equal(t, 512, opts.MaxTokens)
 				assert.Equal(t, 2048, opts.ContextLength)
 				assert.Equal(t, float32(0.7), opts.Temperature)
-				assert.Equal(t, 0, opts.Context)
 				assert.False(t, opts.ContinueChat)
 			},
 		},
@@ -145,14 +144,6 @@ model:
 				assert.Error(t, err) // Should not error on missing config
 				assert.Contains(t, err.Error(), "error reading config file")
 				assert.Nil(t, opts)
-			},
-		},
-		{
-			name: "context flag",
-			args: []string{"--context", "5"},
-			validate: func(t *testing.T, opts *Options, err error) {
-				assert.NoError(t, err)
-				assert.Equal(t, 5, opts.Context)
 			},
 		},
 		{
@@ -261,7 +252,7 @@ model:
   max_tokens: 1234
 `
 	configPath := filepath.Join(tmpDir, "config.yml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
