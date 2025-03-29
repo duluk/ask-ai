@@ -20,7 +20,6 @@ import (
 // Add this to your Options struct
 type Options struct {
 	Model           string
-	Context         int
 	ContextLength   int
 	ContinueChat    bool
 	DumpConfig      bool
@@ -84,7 +83,6 @@ func Initialize() (*Options, error) {
 	// Now define the rest of the flags using values from viper (which now has
 	// config file values)
 	pflag.StringP("model", "m", viper.GetString("model.default"), "Which LLM to use (claude|chatgpt|gemini|grok|deepseek|ollama)")
-	pflag.IntP("context", "n", 0, "Use previous n messages for context")
 	pflag.IntP("context-length", "l", viper.GetInt("model.context_length"), "Maximum context length")
 	pflag.BoolP("continue", "c", false, "Continue previous conversation")
 	pflag.StringP("log", "L", viper.GetString("log.file"), "Chat log file")
@@ -105,7 +103,6 @@ func Initialize() (*Options, error) {
 	pflag.BoolP("tui", "", false, "Use the Terminal User Interface")
 
 	// Bind all flags to viper
-	viper.BindPFlag("context", pflag.Lookup("context"))
 	viper.BindPFlag("continue", pflag.Lookup("continue"))
 	viper.BindPFlag("dump-config", pflag.Lookup("dump-config"))
 	viper.BindPFlag("id", pflag.Lookup("id"))
@@ -142,7 +139,6 @@ func Initialize() (*Options, error) {
 
 	return &Options{
 		Model:           pflag.Lookup("model").Value.String(),
-		Context:         viper.GetInt("context"),
 		ContextLength:   viper.GetInt("model.context_length"),
 		ContinueChat:    viper.GetBool("continue"),
 		DumpConfig:      viper.GetBool("dump-config"),
@@ -317,7 +313,6 @@ func setupConfigFile() error {
 
 func DumpConfig(cfg *Options) {
 	fmt.Printf("Model: %s\n", cfg.Model)
-	fmt.Printf("Context: %d\n", cfg.Context)
 	fmt.Printf("ContextLength: %d\n", cfg.ContextLength)
 	fmt.Printf("ContinueChat: %t\n", cfg.ContinueChat)
 	fmt.Printf("LogFileName: %s\n", cfg.LogFileName)

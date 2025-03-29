@@ -122,6 +122,26 @@ func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations,
 	return conversations, nil
 }
 
+func (sqlDB *ChatDB) GetLastConversationID() (int, error) {
+	rows, err := sqlDB.db.Query(`
+		SELECT MAX(conv_id) FROM ` + sqlDB.dbTable + `;
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("%v", err)
+	}
+	defer rows.Close()
+
+	var convID int
+	for rows.Next() {
+		err := rows.Scan(&convID)
+		if err != nil {
+			return 0, fmt.Errorf("%v", err)
+		}
+	}
+
+	return convID, nil
+}
+
 // TODO: probably want a different return structure, so that the ID and
 // response at the minimum can be returned. But may want prompt too. May want
 // everything.
