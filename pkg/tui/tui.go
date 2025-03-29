@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -62,7 +61,7 @@ var (
 	// just use plain ASCII
 	borderStyle = func() lipgloss.Border {
 		term := os.Getenv("TERM")
-		// tmux is not displaying the rounded corners very well
+		// tmux doesn't display fancy code points well
 		if strings.Contains(term, "tmux-256color") {
 			return lipgloss.NormalBorder()
 		}
@@ -106,10 +105,9 @@ type Model struct {
 	ready        bool
 	processing   bool
 	statusMsg    string
+	streamChan   <-chan LLM.StreamResponse
+	fullResponse string
 }
-
-// TickMsg is used for periodic updates
-type TickMsg time.Time
 
 func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) Model {
 	// log.Printf("Initializing with screen size: %dx%d", opts.ScreenWidth, opts.ScreenHeight)
@@ -122,6 +120,7 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	// Ctrl+U: Delete to beginning of line
 
 	/*
+		// textinput.Model definition for reference
 		type TextInput struct {
 		    Value             string         // Current input value
 		    Prompt            string         // Prompt displayed before input
@@ -141,6 +140,14 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	ti.CharLimit = 0
 
 	ti.Width = opts.ScreenWidth
+
+	// Account for tmux which doesn't show fancy code points
+	term := os.Getenv("TERM")
+	if strings.Contains(term, "tmux-256color") {
+		ti.Prompt = "> "
+	} else {
+		ti.Prompt = "❯ "
+	}
 
 	/*
 		type Viewport struct {
@@ -170,8 +177,10 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 		opts:         opts,
 		clientArgs:   clientArgs,
 		db:           db,
+		fullResponse: "",
 		statusMsg:    fmt.Sprintf("Model: %s | ConvID: %d | Ctrl+C: Exit | /help: Commands", *clientArgs.Model, *clientArgs.ConvID),
 		windowWidth:  opts.ScreenWidth,
+		// windowHeight is the viewport height, not the total window height
 		windowHeight: viewportHeight,
 		ready:        false,
 	}
@@ -179,18 +188,10 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 
 // Init implements tea.Model
 func (m Model) Init() tea.Cmd {
+	// textinput.Blink is the command to make the cursor blink.
 	return tea.Batch(
 		textinput.Blink,
-		tick(),
 	)
-}
-
-// TODO: this probably isn't needed anymore; it was trying to fix the scrolling issue
-// tick sends a message every second
-func tick() tea.Cmd {
-	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
-		return TickMsg(t)
-	})
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -214,27 +215,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			// Handle slash commands
 			if strings.HasPrefix(prompt, "/") {
 				return m.handleSlashCommand(prompt)
 			}
 
-			// Clear input
 			m.textInput.SetValue("")
 
 			userMsg := userStyle.Render("User: ") + strings.Trim(prompt, " \t\n") + "\n\n"
 			m.content += userMsg
 
 			// Pre-wrap content using viewport width to handle Charm's wrapping problems
-			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-			m.viewport.SetContent(wrappedContent)
-			m.viewport.GotoBottom()
+			m.updateViewportContent()
+
+			// Add Assistant prefix before streaming starts
+			m.content += assistantStyle.Render("Assistant: ")
 
 			// TODO: add spinner
 			m.processing = true
 			m.statusMsg = "Processing..."
 
-			// Create command to process the prompt
 			return m, tea.Batch(append(cmds, func() tea.Msg {
 				return promptMsg{prompt: prompt}
 			})...)
@@ -262,13 +261,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if !m.ready {
 			m.ready = true
-			// Perform initial setup like setting initial content (already handled below)
-			// and potentially focusing input, starting cursor blink if needed here.
 		} else {
 			// Re-wrap and set content on resize after initial setup (this is
 			// to deal with Charm's wrapping problems)
-			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-			m.viewport.SetContent(wrappedContent)
+			m.updateViewportContent()
 			m.viewport.GotoBottom()
 		}
 
@@ -280,37 +276,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		*m.clientArgs.Prompt = msg.prompt
 
-		return m, func() tea.Msg {
-			resp, err := m.processPrompt()
-			return responseMsg{response: resp, err: err}
-		}
+		// Start the stream processing in a goroutine and return a command
+		// that waits for stream messages.
+		return m, m.startStreaming()
 
-	// Handle streaming chunks (this may be broken)
 	case streamChunkMsg:
-		// TODO: remove this probably (duplicated by processPrompt?)
-		// Update viewport with new content
-		// wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-		// m.viewport.SetContent(wrappedContent)
+		if msg.err != nil {
+			m.content += "\n\n" + lipgloss.NewStyle().Foreground(lipgloss.Color(lipColorRed)).Render("Error: "+msg.err.Error()) + "\n\n"
+			m.processing = false
+			m.statusMsg = fmt.Sprintf("Error | Model: %s | ConvID: %d", *m.clientArgs.Model, *m.clientArgs.ConvID)
+		} else {
+			m.content += msg.chunk
+			if msg.done {
+				m.content += "\n\n"
+				m.processing = false
+				m.statusMsg = fmt.Sprintf("Model: %s | ConvID: %d | /help for commands", *m.clientArgs.Model, *m.clientArgs.ConvID)
+				m.saveConversation()
+				m.updateContext()
+			}
+		}
+		m.updateViewportContent()
 
-		// m.viewport, cmd = m.viewport.Update(msg)
-		// cmds = append(cmds, cmd)
-
-		// // Update viewport with new content
-		// // Force a proper viewport refresh
-		// cmds = append(cmds, func() tea.Msg {
-		// 	return tea.WindowSizeMsg{
-		// 		Width:  m.windowWidth,
-		// 		Height: m.windowHeight,
-		// 	}
-		// })
-
-		// m.viewport.GotoBottom()
+		if !msg.done {
+			cmds = append(cmds, waitForStreamChunk(m.streamChan))
+		}
 		return m, tea.Batch(cmds...)
-
-	// TODO: again this is probably not needed
-	case TickMsg:
-		m.viewport.GotoBottom()
-		cmds = append(cmds, tick())
 
 	case responseMsg:
 		m.processing = false
@@ -320,13 +310,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		assistantMsg := assistantStyle.Render("Assistant: ") + msg.response + "\n\n"
-		m.content += assistantMsg
-
-		// Deal with Charm's wrapping problems
-		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-		m.viewport.SetContent(wrappedContent)
-		m.viewport.GotoBottom()
+		// This case might not be needed anymore if streamChunkMsg handles everything,
+		// but keeping it for potential non-streaming errors or scenarios.
+		m.content += assistantStyle.Render("Assistant: ") + msg.response + "\n\n"
+		m.updateViewportContent()
 
 		m.statusMsg = fmt.Sprintf("Model: %s | ConvID: %d | /help for commands", *m.clientArgs.Model, *m.clientArgs.ConvID)
 
@@ -357,7 +344,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	// Handle text input updates
 	var tiCmd tea.Cmd
 	m.textInput, tiCmd = m.textInput.Update(msg)
 	if tiCmd != nil {
@@ -365,6 +351,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+// Deal with Charm's wrapping problems by pre-wrapping content with lipgloss
+func (m *Model) updateViewportContent() {
+	wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
+	m.viewport.SetContent(wrappedContent)
+	m.viewport.GotoBottom()
 }
 
 func (m Model) View() string {
@@ -391,7 +384,6 @@ func (m Model) View() string {
 		Width(contentWidth).
 		Render(m.textInput.View())
 
-	// Ensure proper vertical layout with fixed heights
 	// TODO: try lipgloss.JoinVertical again
 	return fmt.Sprintf(
 		"%s\n%s%s%s\n%s",
@@ -472,10 +464,8 @@ func (m *Model) processPrompt() (string, error) {
 
 	// TODO: I don't know if this NoOutput stuff is still needed
 	// Make sure we're not printing to stdout
-	originalNoOutput := m.opts.NoOutput
 	m.opts.NoOutput = true
 
-	// Create a channel for streaming responses
 	streamChan := make(chan LLM.StreamResponse)
 
 	go func() {
@@ -486,68 +476,101 @@ func (m *Model) processPrompt() (string, error) {
 		}
 	}()
 
-	fullResponse := ""
-	for resp := range streamChan {
-		if resp.Error != nil {
-			m.opts.NoOutput = originalNoOutput
-			return "", resp.Error
-		}
+	// NOTE: The response is returned immediately, but the actual content
+	// will arrive via streamChunkMsg messages handled by the Update function.
+	// Returning an empty string here as the full response is built asynchronously.
+	// The error handling for the stream itself happens via streamChunkMsg.
+	return "", nil
+}
 
-		fullResponse += resp.Content
+func (m *Model) startStreaming() tea.Cmd {
+	var client LLM.Client
+	model := *m.clientArgs.Model
 
-		// Send the chunk to the Bubble Tea program
-		m.content += resp.Content
-
-		// Deal with Charm's wrapping problems
-		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-		m.viewport.SetContent(wrappedContent)
-		m.viewport.GotoBottom()
-
-		if resp.Done {
-			m.viewport.GotoBottom()
-			break
-		}
-	}
-
-	m.opts.NoOutput = originalNoOutput
-
-	if !m.opts.NoRecord {
-		inputTokens := LLM.EstimateTokens(*m.clientArgs.Prompt)
-		outputTokens := LLM.EstimateTokens(fullResponse)
-
-		LLM.LogChat(
-			m.clientArgs.Log,
-			"Assistant",
-			fullResponse,
-			model,
-			m.opts.ContinueChat,
-			inputTokens,
-			outputTokens,
-			*m.clientArgs.ConvID,
-		)
-
-		err := m.db.InsertConversation(
-			*m.clientArgs.Prompt,
-			fullResponse,
-			model,
-			*m.clientArgs.Temperature,
-			inputTokens,
-			outputTokens,
-			*m.clientArgs.ConvID,
-		)
-		if err != nil {
-			return fullResponse, fmt.Errorf("error inserting conversation into database: %v", err)
+	// Select the LLM client (duplicate logic from processPrompt, could be refactored)
+	switch model {
+	case "chatgpt":
+		api_url := "https://api.openai.com/v1/"
+		client = LLM.NewOpenAI("openai", api_url)
+	case "ollama":
+		client = LLM.NewOllama()
+	// Add other cases as needed
+	default:
+		return func() tea.Msg {
+			return streamChunkMsg{err: fmt.Errorf("unknown model: %s", model), done: true}
 		}
 	}
 
-	// Update context for next conversation
+	// Get the stream channel from the client
+	_, streamChan, err := client.Chat(m.clientArgs, m.opts.ScreenWidth, m.opts.TabWidth)
+	if err != nil {
+		return func() tea.Msg {
+			return streamChunkMsg{err: err, done: true}
+		}
+	}
+
+	m.streamChan = streamChan
+	m.fullResponse = ""
+
+	return waitForStreamChunk(m.streamChan)
+}
+
+func (m *Model) saveConversation() {
+	if m.opts.NoRecord {
+		return
+	}
+
+	response := m.fullResponse
+
+	// TODO: get actual counts if the API provides them
+	inputTokens := LLM.EstimateTokens(*m.clientArgs.Prompt)
+	outputTokens := LLM.EstimateTokens(response)
+	model := *m.clientArgs.Model // Get model name
+
+	// Log to the YAML file
+	// TODO: a lot of this needs to be removed and put only in the DB
+	logErr := LLM.LogChat(
+		m.clientArgs.Log,
+		"Assistant", // Role
+		response,
+		model,
+		m.opts.ContinueChat,
+		inputTokens,
+		outputTokens,
+		*m.clientArgs.ConvID,
+	)
+	if logErr != nil {
+		// Log or display the error, maybe update status bar
+		m.statusMsg = fmt.Sprintf("Error saving to log file: %v", logErr)
+		// Decide if you want to proceed with DB insert despite log error
+	}
+
+	// Save to the database
+	dbErr := m.db.InsertConversation(
+		*m.clientArgs.Prompt,
+		response,
+		model,
+		*m.clientArgs.Temperature,
+		inputTokens,
+		outputTokens,
+		*m.clientArgs.ConvID,
+	)
+	if dbErr != nil {
+		// TODO: Log the error
+		m.statusMsg = fmt.Sprintf("Error saving to DB: %v", dbErr)
+	}
+}
+
+func (m *Model) updateContext() {
 	m.opts.ContinueChat = true
+	// TODO: do this from the DB instead of the log
 	promptContext, err := LLM.ContinueConversation(m.clientArgs.Log)
 	if err == nil {
 		m.clientArgs.Context = promptContext
+	} else {
+		m.clientArgs.Context = nil
+		m.statusMsg = fmt.Sprintf("Error loading context: %v", err)
 	}
-
-	return fullResponse, nil
 }
 
 func (m Model) handleSlashCommand(cmd string) (tea.Model, tea.Cmd) {
@@ -585,18 +608,14 @@ Available commands:
 		} else {
 			m.content += fmt.Sprintf("Current model: %s\n\n", *m.clientArgs.Model)
 			// Deal with Charm's wrapping problems
-			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-			m.viewport.SetContent(wrappedContent)
-			m.viewport.GotoBottom()
+			m.updateViewportContent()
 		}
 		m.textInput.SetValue("")
 
 	case "/id":
 		m.content += fmt.Sprintf("Conversation ID: %d\n\n", *m.clientArgs.ConvID)
 		// Deal with Charm's wrapping problems
-		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-		m.viewport.SetContent(wrappedContent)
-		m.viewport.GotoBottom()
+		m.updateViewportContent()
 		m.textInput.SetValue("")
 
 	case "/clear":
@@ -618,17 +637,13 @@ Available commands:
 			m.content += "\n"
 		}
 		// Deal with Charm's wrapping problems
-		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-		m.viewport.SetContent(wrappedContent)
-		m.viewport.GotoBottom()
+		m.updateViewportContent()
 		m.textInput.SetValue("")
 
 	default:
 		m.content += fmt.Sprintf("Unknown command: %s\n\n", command)
 		// Deal with Charm's wrapping problems
-		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(m.content)
-		m.viewport.SetContent(wrappedContent)
-		m.viewport.GotoBottom()
+		m.updateViewportContent()
 		m.textInput.SetValue("")
 	}
 
@@ -663,14 +678,14 @@ func min(a, b int) int {
 	return b
 }
 
-// TODO: should this just be removed?
-// func streamChunkCmd(chunkChan <-chan streamChunkMsg) tea.Cmd {
-// 	return func() tea.Msg {
-// 		chunk, ok := <-chunkChan
-// 		if !ok {
-// 			// Channel closed, no more chunks
-// 			return nil
-// 		}
-// 		return chunk
-// 	}
-// }
+// returns a command that waits for the next message on the stream channel
+func waitForStreamChunk(sub <-chan LLM.StreamResponse) tea.Cmd {
+	return func() tea.Msg {
+		resp, ok := <-sub
+		if !ok {
+			return streamChunkMsg{done: true}
+		}
+
+		return streamChunkMsg{chunk: resp.Content, done: resp.Done, err: resp.Error}
+	}
+}

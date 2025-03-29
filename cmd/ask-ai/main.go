@@ -189,9 +189,9 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	continueChat := opts.ContinueChat
 
 	switch model {
-	// case "chatgpt":
-	// 	api_url := "https://api.openai.com/v1/"
-	// 	client = LLM.NewOpenAI("openai", api_url)
+	case "chatgpt":
+		api_url := "https://api.openai.com/v1/"
+		client = LLM.NewOpenAI("openai", api_url)
 	// case "claude":
 	// 	client = LLM.NewAnthropic()
 	// case "gemini":
