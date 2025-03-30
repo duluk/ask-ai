@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -220,8 +219,6 @@ func determineScreenSize() (int, int) {
 	if err != nil {
 		return 80, 24
 	}
-
-	log.Printf("Screen size - width: %d, height: %d", width, height)
 
 	return width, height
 }
