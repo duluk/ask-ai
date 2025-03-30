@@ -109,6 +109,7 @@ func LastNChats(log_fd *os.File, n int) ([]LLMConversations, error) {
 	return chat[totalTurns-n:], nil
 }
 
+// TODO: this needs to come from the DB
 func ContinueConversation(logFd *os.File) ([]LLMConversations, error) {
 	chat, err := LoadChatLog(logFd)
 	if err != nil {
