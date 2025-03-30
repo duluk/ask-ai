@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,7 +15,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
 	"github.com/duluk/ask-ai/pkg/logger"
-	"github.com/duluk/ask-ai/pkg/tui" // Add this import
+	"github.com/duluk/ask-ai/pkg/tui"
 )
 
 // I'm probably writing "Ruby Go"...
@@ -39,16 +39,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	var log_fd *os.File
-	log_fd, err = os.OpenFile(opts.LogFileName, os.O_RDWR|os.O_CREATE, 0o644)
+	err = logger.Initialize(logger.Config{
+		// Level: slog.LevelDebug,
+		Level:      slog.LevelInfo,
+		Format:     "json",
+		FilePath:   opts.LogFileName,
+		MaxSize:    10, // MB
+		MaxBackups: 5,
+		MaxAge:     30,
+		Compress:   true,
+		UseConsole: false,
+	})
 	if err != nil {
-		fmt.Println("Error with chat log file: ", err)
+		fmt.Println("Error initializing logger: ", err)
+		os.Exit(1)
 	}
-	defer log_fd.Close()
 
-	log.SetOutput(log_fd)
-
-	// If DB exists, it just opens it; otherwise, it creates it first
+	// If DB exists, just opens it; otherwise, creates it first
 	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
@@ -63,12 +70,14 @@ func main() {
 	var promptContext []LLM.LLMConversations
 	if opts.ConversationID != 0 {
 		convID = opts.ConversationID
+		logger.Debug("Conversation ID provided", "convID", convID)
 	} else if opts.ContinueChat {
 		convID, err = db.GetLastConversationID()
 		if err != nil {
 			// convID will remain 0
 			fmt.Println("Error getting last conversation ID: ", err)
 		}
+		logger.Debug("Continuing last conversation", "convID", convID)
 	}
 
 	// Make sure we are using the correct conversation id when not provided
@@ -76,10 +85,12 @@ func main() {
 		// This is a 'new' chat, not continued from previous
 		convID, _ = db.GetLastConversationID()
 		convID++
+		logger.Debug("New conversation ID", "convID", convID)
 	} else {
 		// Either opts.id or opts.continue was used (determined above); we need
 		// to load the context from the convID
 		promptContext, err = db.LoadConversationFromDB(convID)
+		logger.Debug("Loaded conversation from DB", "convID", convID)
 		if err != nil {
 			fmt.Printf("error loading conversation from DB: %v", err)
 		}
@@ -96,7 +107,7 @@ func main() {
 		Context:      promptContext,
 		MaxTokens:    &opts.MaxTokens,
 		Temperature:  &opts.Temperature,
-		Log:          log_fd,
+		// Log:          log_fd,
 	}
 
 	// If TUI mode is enabled, start the TUI
@@ -162,8 +173,6 @@ func main() {
 			chatWithLLM(opts, clientArgs, db)
 
 			opts.ContinueChat = true
-			// TODO: this needs to come from the DB
-			// promptContext, err = LLM.ContinueConversation(log_fd)
 			promptContext, err = db.LoadConversationFromDB(*clientArgs.ConvID)
 			if err != nil {
 				fmt.Println("Error reading log for continuing chat: ", err)
@@ -178,9 +187,7 @@ func main() {
 
 func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB) {
 	var client LLM.Client
-	log := args.Log
 	model := *args.Model
-	continueChat := opts.ContinueChat
 
 	switch model {
 	case "chatgpt":
@@ -202,19 +209,6 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	default:
 		fmt.Println("Unknown model: ", model)
 		os.Exit(1)
-	}
-
-	if !opts.NoRecord {
-		LLM.LogChat(
-			log,
-			"User",
-			*args.Prompt,
-			"",
-			continueChat,
-			LLM.EstimateTokens(*args.Prompt),
-			0,
-			*args.ConvID,
-		)
 	}
 
 	if !opts.Quiet {
@@ -244,24 +238,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		fmt.Printf("\n\n-%s (convID: %d)\n", model, *args.ConvID)
 	}
 
-	// If we want the timestamp in the log and in the database to match
-	// exactly, we can set it here and pass it in to LogChat and
-	// InsertConversation. As it stands, each function uses the current
-	// timestamp when the function is executed.
-
 	if !opts.NoRecord {
-		// TODO: the chat should not be logged to the file anymore
-		LLM.LogChat(
-			log,
-			"Assistant",
-			resp.Text,
-			model,
-			continueChat,
-			resp.InputTokens,
-			resp.OutputTokens,
-			*args.ConvID,
-		)
-
 		err = db.InsertConversation(
 			*args.Prompt,
 			resp.Text,
@@ -274,6 +251,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		if err != nil {
 			fmt.Println("error inserting conversation into database: ", err)
 		}
+		logger.Debug("Inserted conversation into database", "convID", *args.ConvID)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -14,11 +15,12 @@ import (
 	"github.com/duluk/ask-ai/pkg/LLM"
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
+	"github.com/duluk/ask-ai/pkg/logger"
 )
 
 const (
-	inputHeight    = 3 // Input box height
-	statusHeight   = 1 // Status line height
+	inputHeight    = 3 // Input box height in lines
+	statusHeight   = 1 // Status line height in lines
 	borderWidth    = 2 // Border width (left + right)
 	borderHeight   = 2 // Border height (top + bottom)
 	contentPadding = 2 // Padding inside components
@@ -286,7 +288,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.processing = false
 			m.statusMsg = fmt.Sprintf("Error | Model: %s | ConvID: %d", *m.clientArgs.Model, *m.clientArgs.ConvID)
 		} else {
+			// m.content is for the viewport and contains everything that has
+			// been displayed so far; m.fullResponse is for the current response only
 			m.content += msg.chunk
+			m.fullResponse += msg.chunk
 			if msg.done {
 				m.content += "\n\n"
 				m.processing = false
@@ -446,36 +451,20 @@ func (m *Model) saveConversation() {
 		return
 	}
 
-	response := m.fullResponse
-
 	// TODO: get actual counts if the API provides them
 	inputTokens := LLM.EstimateTokens(*m.clientArgs.Prompt)
-	outputTokens := LLM.EstimateTokens(response)
-	model := *m.clientArgs.Model // Get model name
+	outputTokens := LLM.EstimateTokens(m.fullResponse)
 
-	// Log to the YAML file
-	// TODO: a lot of this needs to be removed and put only in the DB
-	logErr := LLM.LogChat(
-		m.clientArgs.Log,
-		"Assistant", // Role
-		response,
-		model,
-		m.opts.ContinueChat,
-		inputTokens,
-		outputTokens,
-		*m.clientArgs.ConvID,
-	)
-	if logErr != nil {
-		// Log or display the error, maybe update status bar
-		m.statusMsg = fmt.Sprintf("Error saving to log file: %v", logErr)
-		// Decide if you want to proceed with DB insert despite log error
-	}
+	// Remove the ANSI escape sequences from the response using a regex to cover all
+	// possible escape sequences.
+	ansiEscapeRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	m.fullResponse = ansiEscapeRegex.ReplaceAllString(m.fullResponse, "")
 
 	// Save to the database
 	dbErr := m.db.InsertConversation(
 		*m.clientArgs.Prompt,
-		response,
-		model,
+		m.fullResponse,
+		*m.clientArgs.Model,
 		*m.clientArgs.Temperature,
 		inputTokens,
 		outputTokens,
@@ -485,12 +474,12 @@ func (m *Model) saveConversation() {
 		// TODO: Log the error
 		m.statusMsg = fmt.Sprintf("Error saving to DB: %v", dbErr)
 	}
+	logger.Debug("Inserted conversation into database", "convID", *m.clientArgs.ConvID, "prompt", *m.clientArgs.Prompt, "response", m.fullResponse)
 }
 
 func (m *Model) updateContext() {
 	m.opts.ContinueChat = true
-	// TODO: do this from the DB instead of the log
-	promptContext, err := LLM.ContinueConversation(m.clientArgs.Log)
+	promptContext, err := m.db.LoadConversationFromDB(*m.clientArgs.ConvID)
 	if err == nil {
 		m.clientArgs.Context = promptContext
 	} else {
@@ -578,6 +567,7 @@ Available commands:
 
 func Run(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) error {
 	m := Initialize(opts, clientArgs, db)
+	logger.Debug("Starting TUI program", "opts", opts, "clientArgs", clientArgs)
 
 	p := tea.NewProgram(
 		m,
