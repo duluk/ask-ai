@@ -423,6 +423,8 @@ func (m *Model) startStreaming() tea.Cmd {
 	case "chatgpt":
 		api_url := "https://api.openai.com/v1/"
 		client = LLM.NewOpenAI("openai", api_url)
+	case "claude":
+		client = LLM.NewAnthropic()
 	case "ollama":
 		client = LLM.NewOllama()
 	// Add other cases as needed
