@@ -425,6 +425,8 @@ func (m *Model) startStreaming() tea.Cmd {
 		client = LLM.NewOpenAI("openai", api_url)
 	case "claude":
 		client = LLM.NewAnthropic()
+	case "gemini":
+		client = LLM.NewGoogle()
 	case "ollama":
 		client = LLM.NewOllama()
 	// Add other cases as needed
