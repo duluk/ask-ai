@@ -241,7 +241,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	if !opts.NoRecord {
 		err = db.InsertConversation(
 			*args.Prompt,
-			resp.Text,
+			fullResponse,
 			model,
 			*args.Temperature,
 			resp.InputTokens,
