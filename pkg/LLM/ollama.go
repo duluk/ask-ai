@@ -28,11 +28,13 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	// 	}
 	// }()
 
+	var resp ClientResponse
+	var err error
 	go func() {
 		defer close(responseChan)
 
 		// Use the streaming implementation
-		err := cs.ChatStream(args, termWidth, tabWidth, responseChan)
+		resp, err = cs.ChatStream(args, termWidth, tabWidth, responseChan)
 		if err != nil {
 			responseChan <- StreamResponse{
 				Error: err,
@@ -40,7 +42,7 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 		}
 	}()
 
-	return ClientResponse{}, responseChan, nil
+	return resp, responseChan, nil
 
 	// // Return the full response
 	// // Estimate tokens since we don't have exact counts in this implementation
@@ -55,7 +57,7 @@ func (cs *Ollama) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 }
 
 // Add this method to the Ollama struct
-func (cs *Ollama) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
+func (cs *Ollama) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) (ClientResponse, error) {
 	client := cs.Client
 
 	var msgCtx string
@@ -122,7 +124,7 @@ func (cs *Ollama) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 			Done:    true,
 			Error:   err,
 		}
-		return err
+		return ClientResponse{}, err
 	}
 
 	// Signal completion
@@ -132,5 +134,6 @@ func (cs *Ollama) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 		Error:   nil,
 	}
 
-	return nil
+	// TODO: populate this at some point? Do we have this data?
+	return ClientResponse{}, nil
 }

@@ -41,7 +41,7 @@ type StreamResponse struct {
 
 type Client interface {
 	Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, <-chan StreamResponse, error)
-	ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error
+	ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) (ClientResponse, error)
 }
 
 type Anthropic struct {

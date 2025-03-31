@@ -24,11 +24,13 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	responseChan := make(chan StreamResponse)
 
 	// Start a goroutine to handle streaming
+	var resp ClientResponse
+	var err error
 	go func() {
 		defer close(responseChan)
 
 		// Use the streaming implementation
-		err := cs.ChatStream(args, termWidth, tabWidth, responseChan)
+		resp, err = cs.ChatStream(args, termWidth, tabWidth, responseChan)
 		if err != nil {
 			responseChan <- StreamResponse{
 				Content: "",
@@ -40,10 +42,10 @@ func (cs *OpenAI) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 
 	// Return an empty ClientResponse since the actual response will be streamed
 	// The full response can be collected by the caller if needed
-	return ClientResponse{}, responseChan, nil
+	return resp, responseChan, nil
 }
 
-func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
+func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) (ClientResponse, error) {
 	client := cs.Client
 
 	var msgCtx string
@@ -146,7 +148,7 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 			Done:    true,
 			Error:   err,
 		}
-		return err
+		return ClientResponse{}, err
 	}
 
 	// Signal completion
@@ -156,5 +158,6 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 		Error:   nil,
 	}
 
-	return nil
+	// TODO: populate this?
+	return ClientResponse{}, nil
 }
