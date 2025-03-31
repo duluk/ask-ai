@@ -228,9 +228,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 			fmt.Println("Error: ", chunk.Error)
 			os.Exit(1)
 		}
-		if !opts.Quiet {
-			fmt.Print(chunk.Content)
-		}
+		fmt.Print(chunk.Content)
 		fullResponse += chunk.Content
 	}
 
