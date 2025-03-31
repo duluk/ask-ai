@@ -193,8 +193,8 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	case "chatgpt":
 		api_url := "https://api.openai.com/v1/"
 		client = LLM.NewOpenAI("openai", api_url)
-	// case "claude":
-	// 	client = LLM.NewAnthropic()
+	case "claude":
+		client = LLM.NewAnthropic()
 	// case "gemini":
 	// 	client = LLM.NewGoogle()
 	// case "grok":
@@ -241,7 +241,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	if !opts.NoRecord {
 		err = db.InsertConversation(
 			*args.Prompt,
-			resp.Text,
+			fullResponse,
 			model,
 			*args.Temperature,
 			resp.InputTokens,
@@ -252,6 +252,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 			fmt.Println("error inserting conversation into database: ", err)
 		}
 		logger.Debug("Inserted conversation into database", "convID", *args.ConvID)
+		logger.Debug("Usage stats from model", "inputTokens", resp.InputTokens, "outputTokens", resp.OutputTokens)
 	}
 }
 

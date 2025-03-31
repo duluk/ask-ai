@@ -6,23 +6,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-
-	"github.com/duluk/ask-ai/pkg/linewrap"
+	"strings"
 
 	"github.com/liushuangls/go-anthropic/v2"
+
+	"github.com/duluk/ask-ai/pkg/logger"
 )
 
 func convertToAnthropicMessages(chatHist []LLMConversations) []anthropic.Message {
 	anthropicMsgs := make([]anthropic.Message, len(chatHist))
 
 	for i, msg := range chatHist {
+		logger.Debug("Anthropic LLMConversations", "msg", msg)
 		var role anthropic.ChatRole
 
-		switch msg.Role {
-		case "User":
+		switch strings.ToLower(msg.Role) {
+		case "user":
 			role = anthropic.RoleUser
-		case "Assistant":
+		case "assistant":
 			role = anthropic.RoleAssistant
 		}
 
@@ -48,16 +49,41 @@ func NewAnthropic() *Anthropic {
 	return &Anthropic{APIKey: api_key, Client: client}
 }
 
-func (cs *Anthropic) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error) {
+func (cs *Anthropic) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, <-chan StreamResponse, error) {
+	responseChan := make(chan StreamResponse)
+
+	var resp ClientResponse
+	var err error
+	go func() {
+		defer close(responseChan)
+
+		// Use the streaming implementation
+		resp, err = cs.ChatStream(args, termWidth, tabWidth, responseChan)
+		if err != nil {
+			responseChan <- StreamResponse{
+				Content: "",
+				Done:    true,
+				Error:   err,
+			}
+		}
+	}()
+
+	return resp, responseChan, nil
+}
+
+func (cs *Anthropic) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) (ClientResponse, error) {
 	prompt := args.Prompt
 	client := cs.Client
 
+	logger.Debug("Anthropic context before conversion", "args.Context", args.Context)
 	msgCtx := convertToAnthropicMessages(args.Context)
 	msgCtx = append(msgCtx, anthropic.NewUserTextMessage(*prompt))
+	logger.Debug("Anthropic context after conversion", "context", msgCtx)
 
 	myInputEstimate := EstimateTokens(*args.Prompt + *args.SystemPrompt)
 
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
+	// wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
+
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
@@ -73,8 +99,15 @@ func (cs *Anthropic) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientR
 				// TopK:        40,
 			},
 			// Print the response as it comes in, as a streaming chat...
+			// OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
+			// 	wrapper.Write([]byte(*data.Delta.Text))
+			// },
 			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
-				wrapper.Write([]byte(*data.Delta.Text))
+				stream <- StreamResponse{
+					Content: *data.Delta.Text,
+					Done:    false,
+					Error:   nil,
+				}
 			},
 		})
 	if err != nil {
@@ -84,6 +117,7 @@ func (cs *Anthropic) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientR
 		} else {
 			fmt.Printf("Messages stream error: %v\n", err)
 		}
+
 		return ClientResponse{}, err
 	}
 
@@ -96,34 +130,4 @@ func (cs *Anthropic) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientR
 		MyEstInput:   myInputEstimate,
 	}
 	return r, nil
-}
-
-// Add this method to the Anthropic struct
-func (cs *Anthropic) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
-	// Not yet implemented - just use the non-streaming version for now
-	resp, err := cs.Chat(args, termWidth, tabWidth)
-	if err != nil {
-		stream <- StreamResponse{
-			Content: "",
-			Done:    true,
-			Error:   err,
-		}
-		return err
-	}
-
-	// Send the full response as one chunk
-	stream <- StreamResponse{
-		Content: resp.Text,
-		Done:    false,
-		Error:   nil,
-	}
-
-	// Signal completion
-	stream <- StreamResponse{
-		Content: "",
-		Done:    true,
-		Error:   nil,
-	}
-
-	return nil
 }
