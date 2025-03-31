@@ -3,10 +3,7 @@ package LLM
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
-
-	"github.com/duluk/ask-ai/pkg/linewrap"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
@@ -51,12 +48,33 @@ func (cs *Google) SimpleChat(args ClientArgs) error {
 	return nil
 }
 
-func (cs *Google) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, error) {
+func (cs *Google) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResponse, <-chan StreamResponse, error) {
+	responseChan := make(chan StreamResponse)
+
+	var resp ClientResponse
+	var err error
+	go func() {
+		defer close(responseChan)
+
+		// Use the streaming implementation
+		resp, err = cs.ChatStream(args, termWidth, tabWidth, responseChan)
+		if err != nil {
+			responseChan <- StreamResponse{
+				Content: "",
+				Done:    true,
+				Error:   err,
+			}
+		}
+	}()
+
+	return resp, responseChan, nil
+}
+
+func (cs *Google) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) (ClientResponse, error) {
 	client := cs.Client
 	ctx := cs.Context
 
-	model := client.GenerativeModel("gemini-1.5-pro")
-	// model := client.GenerativeModel("gemini-exp-1114")
+	model := client.GenerativeModel("gemini-2.0-flash")
 	model.SetTemperature(*args.Temperature)
 	model.SetMaxOutputTokens(int32(*args.MaxTokens))
 	model.SystemInstruction = genai.NewUserContent(genai.Text(*args.SystemPrompt))
@@ -70,7 +88,6 @@ func (cs *Google) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	myInputEstimate := EstimateTokens(prompt + *args.SystemPrompt)
 
 	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
 	for {
 		resp, err := iter.Next()
 		if err == iterator.Done {
@@ -82,12 +99,25 @@ func (cs *Google) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 
 		r := fmt.Sprintf("%s", resp.Candidates[0].Content.Parts[0])
 		resp_str += r
-		wrapper.Write([]byte(r))
+
+		stream <- StreamResponse{
+			Content: r,
+			Done:    false,
+			Error:   nil,
+		}
 
 		usage = resp.UsageMetadata
 	}
 
+	// TODO: do we need to check for errors?
+	stream <- StreamResponse{
+		Content: "",
+		Done:    true,
+		Error:   nil,
+	}
+
 	// I believe the stats object will be usable even if the response is empty
+	// TODO: confirm this is working and passed back
 	r := ClientResponse{
 		Text:         resp_str,
 		InputTokens:  usage.PromptTokenCount,
@@ -96,34 +126,4 @@ func (cs *Google) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientResp
 	}
 
 	return r, nil
-}
-
-// Add this method to the Google struct
-func (cs *Google) ChatStream(args ClientArgs, termWidth int, tabWidth int, stream chan<- StreamResponse) error {
-	// Not yet implemented - just use the non-streaming version for now
-	resp, err := cs.Chat(args, termWidth, tabWidth)
-	if err != nil {
-		stream <- StreamResponse{
-			Content: "",
-			Done:    true,
-			Error:   err,
-		}
-		return err
-	}
-
-	// Send the full response as one chunk
-	stream <- StreamResponse{
-		Content: resp.Text,
-		Done:    false,
-		Error:   nil,
-	}
-
-	// Signal completion
-	stream <- StreamResponse{
-		Content: "",
-		Done:    true,
-		Error:   nil,
-	}
-
-	return nil
 }
