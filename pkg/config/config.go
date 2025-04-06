@@ -166,10 +166,6 @@ func min(a, b int) int {
 	return b
 }
 
-func max(a, b int) int {
-	return -min(-a, -b)
-}
-
 // Maybe this shouldn't be in config...
 func searchForConversation(search string) {
 	if viper.GetString("database.file") == "" {
@@ -240,7 +236,7 @@ func showConversation(convID int) {
 	}
 	defer db.Close()
 
-	db.ShowConversation(viper.GetInt("show"))
+	db.ShowConversation(convID)
 	os.Exit(0)
 }
 

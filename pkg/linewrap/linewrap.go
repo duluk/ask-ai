@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// Descriptive var for when not using an io.Writer
+var NilWriter io.Writer = nil
+
 type LineWrapper struct {
 	maxWidth  int
 	currWidth int
@@ -16,15 +19,40 @@ type LineWrapper struct {
 
 func NewLineWrapper(maxWidth, tabWidth int, lwWriter io.Writer) *LineWrapper {
 	return &LineWrapper{
-		maxWidth: maxWidth,
-		tabWidth: tabWidth,
-		writer:   lwWriter,
+		maxWidth:  maxWidth,
+		tabWidth:  tabWidth,
+		writer:    lwWriter,
+		currWidth: 0,
 	}
+}
+
+// This is primarily for when the terminal is resized and Charm sends the
+// WindowSizeMsg; in that case we need to update our wrapper's maxWidth
+func (lw *LineWrapper) SetMaxWidth(width int) {
+	lw.maxWidth = width
 }
 
 // Allow wrapping for input that comes in chunks, versus building the line and
 // then splitting it and printing the whole line at once.
-func (lw *LineWrapper) Write(data []byte) (n int, err error) {
+func (lw *LineWrapper) Write(data []byte) int {
+	buffer := wrap_impl(data, lw)
+
+	lw.writer.Write(buffer.Bytes())
+
+	return len(buffer.Bytes())
+}
+
+// When not using an io.Writer but will allow the caller to handle when to display:
+// essentially just inserting newlines at the aprpriate places
+func (lw *LineWrapper) Wrap(data []byte) string {
+	buffer := wrap_impl(data, lw)
+
+	return buffer.String()
+}
+
+// wrap_impl performs the core word wrapping logic.
+
+func wrap_impl(data []byte, lw *LineWrapper) bytes.Buffer {
 	var buffer bytes.Buffer
 
 	for i, b := range data {
@@ -74,7 +102,5 @@ func (lw *LineWrapper) Write(data []byte) (n int, err error) {
 		}
 	}
 
-	lw.writer.Write(buffer.Bytes())
-
-	return len(data), nil
+	return buffer
 }
