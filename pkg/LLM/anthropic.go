@@ -10,7 +10,6 @@ import (
 
 	"github.com/liushuangls/go-anthropic/v2"
 
-	"github.com/duluk/ask-ai/pkg/linewrap"
 	"github.com/duluk/ask-ai/pkg/logger"
 )
 
@@ -83,8 +82,6 @@ func (cs *Anthropic) ChatStream(args ClientArgs, termWidth int, tabWidth int, st
 
 	myInputEstimate := EstimateTokens(*args.Prompt + *args.SystemPrompt)
 
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, linewrap.NilWriter)
-
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
@@ -105,7 +102,7 @@ func (cs *Anthropic) ChatStream(args ClientArgs, termWidth int, tabWidth int, st
 			// },
 			OnContentBlockDelta: func(data anthropic.MessagesEventContentBlockDeltaData) {
 				stream <- StreamResponse{
-					Content: wrapper.Wrap([]byte(*data.Delta.Text)),
+					Content: *data.Delta.Text,
 					Done:    false,
 					Error:   nil,
 				}

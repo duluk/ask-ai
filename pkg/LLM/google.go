@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/duluk/ask-ai/pkg/linewrap"
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -88,8 +87,6 @@ func (cs *Google) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 	prompt := buildPrompt(args.Context, *args.Prompt)
 	myInputEstimate := EstimateTokens(prompt + *args.SystemPrompt)
 
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, linewrap.NilWriter)
-
 	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
 	for {
 		resp, err := iter.Next()
@@ -104,7 +101,7 @@ func (cs *Google) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 		resp_str += r
 
 		stream <- StreamResponse{
-			Content: wrapper.Wrap([]byte(r)),
+			Content: r,
 			Done:    false,
 			Error:   nil,
 		}

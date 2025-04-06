@@ -60,10 +60,6 @@ func (cs *DeepSeek) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientRe
 		// Handle error
 	}
 
-	// TODO: fix this
-	// wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
-	// wrapper.Write([]byte(resp.Choices[0].Message.Content))
-
 	r := ClientResponse{
 		// Text:         "NOT REAL",
 		Text:         resp.Choices[0].Message.Content,
