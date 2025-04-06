@@ -2,11 +2,9 @@ package LLM
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"github.com/duluk/ask-ai/pkg/deepseek"
-	"github.com/duluk/ask-ai/pkg/linewrap"
 )
 
 func NewDeepSeek() *DeepSeek {
@@ -62,11 +60,13 @@ func (cs *DeepSeek) Chat(args ClientArgs, termWidth int, tabWidth int) (ClientRe
 		// Handle error
 	}
 
-	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
-	wrapper.Write([]byte(resp.Choices[0].Message.Content))
+	// TODO: fix this
+	// wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
+	// wrapper.Write([]byte(resp.Choices[0].Message.Content))
 
 	r := ClientResponse{
-		Text:         "NOT REAL",
+		// Text:         "NOT REAL",
+		Text:         resp.Choices[0].Message.Content,
 		InputTokens:  0,
 		OutputTokens: 0,
 		MyEstInput:   myInputEstimate,

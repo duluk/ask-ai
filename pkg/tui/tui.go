@@ -15,6 +15,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/LLM"
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
+	"github.com/duluk/ask-ai/pkg/linewrap"
 	"github.com/duluk/ask-ai/pkg/logger"
 )
 
@@ -109,6 +110,7 @@ type Model struct {
 	statusMsg    string
 	streamChan   <-chan LLM.StreamResponse
 	fullResponse string
+	lineWrapper  *linewrap.LineWrapper
 }
 
 func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) Model {
@@ -168,9 +170,16 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding + testPadding
 	viewportHeight := opts.ScreenHeight - totalFixedHeight
 
-	vp := viewport.New(opts.ScreenWidth, viewportHeight)
+	// TODO: Avante made this change
+	// Calculate initial content width, accounting for viewport padding and borders
+	contentWidth := opts.ScreenTextWidth - contentMargin
+
+	vp := viewport.New(contentWidth, viewportHeight)
 	vp.SetContent("")
 	vp.YPosition = 0 // Bubble Tea/Lipgloss will adjust for the border
+
+	// Wrap it up
+	lw := linewrap.NewLineWrapper(contentWidth, opts.TabWidth, linewrap.NilWriter)
 
 	return Model{
 		viewport:     vp,
@@ -185,6 +194,7 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 		// windowHeight is the viewport height, not the total window height
 		windowHeight: viewportHeight,
 		ready:        false,
+		lineWrapper:  lw,
 	}
 }
 
@@ -251,15 +261,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// TODO: this can possible be removed as we figured out the scrolling issue
 		// Add a small buffer to prevent content from being hidden
 		viewportHeight := m.windowHeight - totalFixedHeight
-		contentWidth := m.windowWidth - contentMargin
+		viewportWidth := m.windowWidth - contentMargin
 
-		// NOTE: this is the inside width, for the text itself - so
-		// it affects things like wrapping. If no adjustment is made,
-		// the text doesn't wrap correctly. Why 4? /shrug
-		// Update viewport dimensions
-		m.viewport.Width = contentWidth
+		textWidth := min(viewportWidth, m.opts.ScreenTextWidth)
+		m.lineWrapper.SetMaxWidth(textWidth)
+
 		m.viewport.Height = viewportHeight
-		m.textInput.Width = contentWidth
+		m.viewport.Width = viewportWidth
+		m.textInput.Width = viewportWidth
 
 		if !m.ready {
 			m.ready = true
@@ -267,7 +276,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Re-wrap and set content on resize after initial setup (this is
 			// to deal with Charm's wrapping problems)
 			m.updateViewportContent()
-			m.viewport.GotoBottom()
 		}
 
 		return m, nil
@@ -291,7 +299,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// m.content is for the viewport and contains everything that has
 			// been displayed so far; m.fullResponse is for the current response only
 			m.content += msg.chunk
-			m.fullResponse += msg.chunk
+			m.fullResponse += msg.chunk // Don't store the wrapped chunk in DB
 			if msg.done {
 				m.content += "\n\n"
 				m.processing = false
@@ -303,7 +311,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewportContent()
 
 		if !msg.done {
-			cmds = append(cmds, waitForStreamChunk(m.streamChan))
+			cmds = append(cmds, waitForStreamChunk(&m, m.streamChan))
 		}
 		return m, tea.Batch(cmds...)
 
@@ -370,9 +378,11 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 
-	// NOTE: This accounts for the border on viewport and input, as in it makes
-	// them line up correctly. Why 2? /shrug
-	contentWidth := m.windowWidth - 2
+	// NOTE: this accounts for issues with the right border not appearing; for
+	// whatever reason, I have to reduce the width by 2 (which happens to be
+	// the same as 'contentPadding', so I'm going to use that and see if anything
+	// changes, they stay related)
+	contentWidth := m.windowWidth - contentPadding
 
 	viewportBox := viewportStyle.
 		Width(contentWidth).
@@ -380,20 +390,17 @@ func (m Model) View() string {
 		Render(m.viewport.View())
 
 	statusLine := statusStyle.
-		// Reduce width by 2 to account for left and right spacing; this allows
-		// it to line up with the borders better
-		Width(m.windowWidth - 2).
+		Width(contentWidth).
+		Padding(0, 1).
 		Render(m.statusMsg)
 
 	inputBox := inputStyle.
 		Width(contentWidth).
 		Render(m.textInput.View())
 
-	// TODO: try lipgloss.JoinVertical again
-	return fmt.Sprintf(
-		"%s\n%s%s%s\n%s",
+	return lipgloss.JoinVertical(lipgloss.Center,
 		viewportBox,
-		" ", statusLine, " ",
+		statusLine,
 		inputBox,
 	)
 }
@@ -418,11 +425,13 @@ func (m *Model) startStreaming() tea.Cmd {
 	var client LLM.Client
 	model := *m.clientArgs.Model
 
-	// Select the LLM client (duplicate logic from processPrompt, could be refactored)
 	switch model {
 	case "chatgpt":
 		api_url := "https://api.openai.com/v1/"
 		client = LLM.NewOpenAI("openai", api_url)
+	case "grok":
+		api_url := "https://api.x.ai/v1/"
+		client = LLM.NewOpenAI("xai", api_url)
 	case "claude":
 		client = LLM.NewAnthropic()
 	case "gemini":
@@ -437,7 +446,7 @@ func (m *Model) startStreaming() tea.Cmd {
 	}
 
 	// Get the stream channel from the client
-	_, streamChan, err := client.Chat(m.clientArgs, m.opts.ScreenWidth, m.opts.TabWidth)
+	_, streamChan, err := client.Chat(m.clientArgs, m.opts.ScreenTextWidth, m.opts.TabWidth)
 	if err != nil {
 		return func() tea.Msg {
 			return streamChunkMsg{err: err, done: true}
@@ -447,7 +456,7 @@ func (m *Model) startStreaming() tea.Cmd {
 	m.streamChan = streamChan
 	m.fullResponse = ""
 
-	return waitForStreamChunk(m.streamChan)
+	return waitForStreamChunk(m, m.streamChan)
 }
 
 func (m *Model) saveConversation() {
@@ -599,13 +608,14 @@ func min(a, b int) int {
 }
 
 // returns a command that waits for the next message on the stream channel
-func waitForStreamChunk(sub <-chan LLM.StreamResponse) tea.Cmd {
+func waitForStreamChunk(m *Model, sub <-chan LLM.StreamResponse) tea.Cmd {
 	return func() tea.Msg {
 		resp, ok := <-sub
 		if !ok {
 			return streamChunkMsg{done: true}
 		}
 
-		return streamChunkMsg{chunk: resp.Content, done: resp.Done, err: resp.Error}
+		wrappedChunk := m.lineWrapper.Wrap([]byte(resp.Content))
+		return streamChunkMsg{chunk: wrappedChunk, done: resp.Done, err: resp.Error}
 	}
 }

@@ -18,7 +18,6 @@ require (
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/api v0.228.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
-	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
