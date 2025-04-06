@@ -8,7 +8,7 @@ import (
 
 func NewOllama() *Ollama {
 	apiKey := ""
-	client := ollama.NewClient(apiKey)
+	client := ollama.NewClient(apiKey, ollama.OllamaBaseURL)
 
 	return &Ollama{APIKey: apiKey, Client: client}
 }
@@ -74,7 +74,7 @@ func (cs *Ollama) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 
 	const minTokens = 32768
 	const OllamaModelGemma2 = "gemma2:9b"
-	const OllamaModelGemma3 = "gemma3:4b"
+	const OllamaModelGemma3 = "gemma3:12b"
 	const OllamaModelDeepseekR1_8b = "deepseek-r1:8b"
 	const OllamaModelDeepseekR1_14b = "deepseek-r1:14b"
 	const OllamaModelLlama3_2 = "llama3.2:latest"

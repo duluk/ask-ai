@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/duluk/ask-ai/pkg/linewrap"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 )
@@ -106,7 +107,7 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 	)
 
 	// Create a LineWrapper for terminal output if needed
-	// wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, os.Stdout)
+	wrapper := linewrap.NewLineWrapper(termWidth, tabWidth, linewrap.NilWriter)
 
 	// Process the stream in chunks
 	for openaiStream.Next() {
@@ -131,7 +132,7 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 
 				// Send data to the stream channel
 				stream <- StreamResponse{
-					Content: data,
+					Content: wrapper.Wrap([]byte(data)),
 					Done:    false,
 					Error:   nil,
 				}
