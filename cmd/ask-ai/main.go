@@ -14,6 +14,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/LLM"
 	"github.com/duluk/ask-ai/pkg/config"
 	"github.com/duluk/ask-ai/pkg/database"
+	"github.com/duluk/ask-ai/pkg/linewrap"
 	"github.com/duluk/ask-ai/pkg/logger"
 	"github.com/duluk/ask-ai/pkg/tui"
 )
@@ -221,6 +222,8 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		os.Exit(1)
 	}
 
+	lw := linewrap.NewLineWrapper(opts.ScreenTextWidth, opts.TabWidth, os.Stdout)
+
 	// Collect the full response while printing chunks
 	fullResponse := ""
 	for chunk := range streamChan {
@@ -228,7 +231,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 			fmt.Println("Error: ", chunk.Error)
 			os.Exit(1)
 		}
-		fmt.Print(chunk.Content)
+		lw.Write([]byte(chunk.Content))
 		fullResponse += chunk.Content
 	}
 
