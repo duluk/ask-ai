@@ -197,9 +197,9 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		client = LLM.NewAnthropic()
 	case "gemini":
 		client = LLM.NewGoogle()
-	// case "grok":
-	// 	api_url := "https://api.x.ai/v1/"
-	// 	client = LLM.NewOpenAI("xai", api_url)
+	case "grok":
+		api_url := "https://api.x.ai/v1/"
+		client = LLM.NewOpenAI("xai", api_url)
 	// case "deepseek":
 	// 	api_url := "https://api.deepseek.com/v1/"
 	// 	client = LLM.NewOpenAI("deepseek", api_url)
