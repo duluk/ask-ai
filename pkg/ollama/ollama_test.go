@@ -15,7 +15,7 @@ import (
 
 func TestNewClient(t *testing.T) {
 	apiKey := "test-api-key"
-	client := NewClient(apiKey)
+	client := NewClient(apiKey, "http://example.com")
 	if client.APIKey != apiKey {
 		t.Errorf("expected API key to be %q, got %q", apiKey, client.APIKey)
 	}
@@ -55,7 +55,9 @@ func TestChatCompletion(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := NewClient("test-key")
+			client := NewClient("test-key", server.URL)
+			client.HTTPClient = server.Client()
+
 			resp, err := client.ChatCompletion(tt.request)
 
 			if tt.expectedError != "" {
@@ -99,7 +101,6 @@ func TestChatCompletionRequestMarshaling(t *testing.T) {
 
 func TestChatCompletionSuccess(t *testing.T) {
 	apiKey := "test-api-key"
-	client := NewClient(apiKey)
 
 	req := ChatCompletionRequest{
 		Model: "test-model",
@@ -146,6 +147,7 @@ func TestChatCompletionSuccess(t *testing.T) {
 
 	defer httpServer.Close()
 
+	client := NewClient(apiKey, httpServer.URL)
 	client.HTTPClient = &http.Client{
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
@@ -178,7 +180,6 @@ func TestChatCompletionSuccess(t *testing.T) {
 
 func TestChatCompletionError(t *testing.T) {
 	apiKey := "test-api-key"
-	client := NewClient(apiKey)
 
 	req := ChatCompletionRequest{
 		Model: "test-model",
@@ -225,6 +226,7 @@ func TestChatCompletionError(t *testing.T) {
 
 	defer httpServer.Close()
 
+	client := NewClient(apiKey, httpServer.URL)
 	client.HTTPClient = &http.Client{
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,

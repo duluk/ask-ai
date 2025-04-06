@@ -45,12 +45,14 @@ type ChatCompletionResponse struct {
 type Client struct {
 	APIKey     string
 	HTTPClient *http.Client
+	BaseURL    string
 }
 
-func NewClient(apiKey string) *Client {
+func NewClient(apiKey, baseURL string) *Client {
 	return &Client{
 		APIKey:     apiKey,
 		HTTPClient: &http.Client{},
+		BaseURL:    baseURL,
 	}
 }
 
@@ -85,7 +87,7 @@ func (c *Client) ChatCompletion(req ChatCompletionRequest) (*ChatCompletionRespo
 		return nil, fmt.Errorf("failed to marshal request: %v", err)
 	}
 
-	url, err := url.Parse(OllamaBaseURL)
+	url, err := url.Parse(c.BaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
