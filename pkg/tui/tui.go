@@ -547,6 +547,7 @@ Available commands:
 		m.textInput.SetValue("")
 
 	case "/clear":
+		m.clientArgs.Context = nil
 		m.content = ""
 		m.viewport.SetContent(m.content)
 		m.textInput.SetValue("")
