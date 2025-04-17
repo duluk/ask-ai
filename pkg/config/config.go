@@ -16,27 +16,79 @@ import (
 	"github.com/duluk/ask-ai/pkg/database"
 )
 
+// Provider holds configuration for an AI provider
+type Provider struct {
+	APIKey string                 `mapstructure:"api_key"`
+	Models map[string]ModelConfig `mapstructure:"models"`
+}
+
+// ModelConfig holds configuration for a specific model
+type ModelConfig struct {
+	Aliases     []string `mapstructure:"aliases"`
+	ModelName   string   `mapstructure:"model_name"`
+	Temperature float64  `mapstructure:"temperature"`
+	MaxTokens   int      `mapstructure:"max_tokens"`
+}
+
+// Config holds the main configuration
+type Config struct {
+	Models   map[string]Provider `mapstructure:"models"`
+	Defaults struct {
+		Model    string `mapstructure:"model"`
+		Provider string `mapstructure:"provider"`
+	} `mapstructure:"defaults"`
+	Logging struct {
+		File       string `mapstructure:"file"`
+		Level      string `mapstructure:"level"`
+		MaxSize    int    `mapstructure:"max_size"`
+		MaxBackups int    `mapstructure:"max_backups"`
+	} `mapstructure:"logging"`
+	Database struct {
+		Path  string `mapstructure:"path"`
+		Table string `mapstructure:"table"`
+	} `mapstructure:"database"`
+}
+
 // Add this to your Options struct
+// type Options struct {
+// 	Model           string
+// 	ContextLength   int
+// 	ContinueChat    bool
+// 	DumpConfig      bool
+// 	LogFileName     string
+// 	DBFileName      string
+// 	DBTable         string
+// 	SystemPrompt    string
+// 	MaxTokens       int
+// 	Temperature     float32
+// 	ConversationID  int
+// 	ScreenWidth     int
+// 	ScreenTextWidth int
+// 	ScreenHeight    int
+// 	TabWidth        int
+// 	Quiet           bool
+// 	NoRecord        bool
+// 	UseTUI          bool // Add this field
+// 	NoOutput        bool
+// }
+
+// Options holds runtime configuration options
 type Options struct {
-	Model           string
-	ContextLength   int
-	ContinueChat    bool
-	DumpConfig      bool
-	LogFileName     string
-	DBFileName      string
-	DBTable         string
-	SystemPrompt    string
-	MaxTokens       int
-	Temperature     float32
-	ConversationID  int
-	ScreenWidth     int
-	ScreenTextWidth int
-	ScreenHeight    int
-	TabWidth        int
-	Quiet           bool
-	NoRecord        bool
-	UseTUI          bool // Add this field
-	NoOutput        bool
+	ConfigDir      string
+	DumpConfig     bool
+	ShowAPIKeys    bool
+	Model          string
+	Provider       string
+	Temperature    float64
+	MaxTokens      int
+	LogFileName    string
+	DBFileName     string
+	DBTable        string
+	SystemPrompt   string
+	UseTUI         bool
+	NoOutput       bool
+	ContinueChat   bool
+	ConversationID int
 }
 
 const Version = "0.3.3"
@@ -67,96 +119,74 @@ func Initialize() (*Options, error) {
 
 	width, height := determineScreenSize()
 
-	viper.SetDefault("model.default", "ollama")
-	viper.SetDefault("model.context_length", 2048)
-	viper.SetDefault("model.max_tokens", 512)
-	viper.SetDefault("model.temperature", 0.7)
-	viper.SetDefault("model.system_prompt", "")
-	viper.SetDefault("log.file", filepath.Join(configDir, "ask-ai.chat.yml"))
-	viper.SetDefault("database.file", filepath.Join(configDir, "ask-ai.db"))
+	pflag.StringP("model", "m", "", "Model to use")
+	pflag.StringP("provider", "p", "", "Provider to use")
+	pflag.Float64P("temperature", "t", 0.7, "Temperature for model responses")
+	pflag.IntP("max-tokens", "M", 1024, "Maximum tokens for response")
+	pflag.BoolP("continue", "c", false, "Continue last conversation")
+	pflag.IntP("id", "i", 0, "Conversation ID to continue")
+	pflag.BoolP("tui", "T", false, "Use TUI interface")
+	pflag.BoolP("no-output", "n", false, "Disable direct terminal output")
+	pflag.BoolP("dump-config", "d", false, "Dump configuration and exit")
+	pflag.BoolP("show-keys", "k", false, "Show API keys in config dump")
+
+	viper.BindPFlags(pflag.CommandLine)
+
+	// Set default configuration values
+	viper.SetDefault("defaults.provider", "openai")
+	viper.SetDefault("defaults.model", "chatgpt-4o-latest")
+	viper.SetDefault("logging.file", filepath.Join(configDir, "ask-ai.log"))
+	viper.SetDefault("database.path", filepath.Join(configDir, "ask-ai.db"))
 	viper.SetDefault("database.table", "conversations")
-	viper.SetDefault("screen.width", width)
-	viper.SetDefault("screen.height", height)
-	viper.SetDefault("output.quiet", false)
 
-	// Now define the rest of the flags using values from viper (which now has
-	// config file values)
-	pflag.StringP("model", "m", viper.GetString("model.default"), "Which LLM to use (claude|chatgpt|gemini|grok|deepseek|ollama)")
-	pflag.IntP("context-length", "l", viper.GetInt("model.context_length"), "Maximum context length")
-	pflag.BoolP("continue", "c", false, "Continue previous conversation")
-	pflag.StringP("log", "L", viper.GetString("log.file"), "Chat log file")
-	pflag.StringP("database", "d", viper.GetString("database.file"), "Database file")
-	pflag.StringP("system-prompt", "S", viper.GetString("model.system_prompt"), "System prompt for LLM")
-	pflag.IntP("max-tokens", "t", viper.GetInt("model.max_tokens"), "Maximum tokens to generate")
-	pflag.Float32P("temperature", "T", float32(viper.GetFloat64("model.temperature")), "Temperature for generation")
-	pflag.BoolP("version", "v", false, "Print version and exit")
-	pflag.BoolP("full-version", "V", false, "Print full version information and exit")
-	pflag.BoolP("dump-config", "", false, "Dump configuration and exit")
-	pflag.IntP("id", "i", 0, "ID of the conversation to continue")
-	pflag.StringP("search", "s", "", "Search for a conversation")
-	pflag.IntP("show", "", 0, "Show conversation with ID")
-	pflag.StringP("width", "", "", "Width of the screen for linewrap")
-	pflag.StringP("height", "", "", "Height of the screen for linewrap")
-	pflag.BoolP("quiet", "q", false, "Output only the LLM response")
-	pflag.BoolP("no-record", "", false, "Don't write query/response to database")
-	pflag.BoolP("tui", "", false, "Use the Terminal User Interface")
-
-	// Bind all flags to viper
-	viper.BindPFlag("continue", pflag.Lookup("continue"))
-	viper.BindPFlag("dump-config", pflag.Lookup("dump-config"))
-	viper.BindPFlag("id", pflag.Lookup("id"))
-	viper.BindPFlag("search", pflag.Lookup("search"))
-	viper.BindPFlag("show", pflag.Lookup("show"))
-	viper.BindPFlag("log.file", pflag.Lookup("log"))
-	viper.BindPFlag("database.file", pflag.Lookup("database"))
-	viper.BindPFlag("model.system_prompt", pflag.Lookup("system-prompt"))
-	viper.BindPFlag("model.max_tokens", pflag.Lookup("max-tokens"))
-	viper.BindPFlag("model.context_length", pflag.Lookup("context-length"))
-	viper.BindPFlag("model.temperature", pflag.Lookup("temperature"))
-	viper.BindPFlag("screen.width", pflag.Lookup("width"))
-	viper.BindPFlag("screen.height", pflag.Lookup("height"))
-	viper.BindPFlag("quiet", pflag.Lookup("quiet"))
-	viper.BindPFlag("no-record", pflag.Lookup("no-record"))
-	viper.BindPFlag("tui", pflag.Lookup("tui"))
-
-	viper.BindPFlag("version", pflag.Lookup("version"))
-	viper.BindPFlag("full-version", pflag.Lookup("full-version"))
-
-	pflag.Parse()
-
-	if handleVersionFlags() {
-		os.Exit(0)
+	// Read config file
+	if configFile := viper.GetString("config"); configFile != "" {
+		viper.SetConfigFile(configFile)
+	} else {
+		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(configDir)
+		viper.AddConfigPath(".")
 	}
 
-	if viper.GetString("search") != "" {
-		searchForConversation(viper.GetString("search"))
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("error reading config: %w", err)
+		}
 	}
 
-	if viper.GetInt("show") != 0 {
-		showConversation(viper.GetInt("show"))
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		return nil, fmt.Errorf("error parsing config: %w", err)
 	}
 
-	return &Options{
-		Model:           pflag.Lookup("model").Value.String(),
-		ContextLength:   viper.GetInt("model.context_length"),
-		ContinueChat:    viper.GetBool("continue"),
-		DumpConfig:      viper.GetBool("dump-config"),
-		LogFileName:     os.ExpandEnv(viper.GetString("log.file")),
-		DBFileName:      os.ExpandEnv(viper.GetString("database.file")),
-		DBTable:         viper.GetString("database.table"),
-		SystemPrompt:    viper.GetString("model.system_prompt"),
-		MaxTokens:       viper.GetInt("model.max_tokens"),
-		Temperature:     float32(viper.GetFloat64("model.temperature")),
-		ConversationID:  viper.GetInt("id"),
-		ScreenWidth:     viper.GetInt("screen.width"),
-		ScreenTextWidth: min(viper.GetInt("screen.width"), MaxTermTextWidth) - widthPad,
-		ScreenHeight:    viper.GetInt("screen.height"),
-		TabWidth:        TabWidth,
-		Quiet:           viper.GetBool("quiet"),
-		NoRecord:        viper.GetBool("no-record"),
-		UseTUI:          viper.GetBool("tui"),
-		NoOutput:        false,
-	}, nil
+	// Create options from config and flags
+	opts := &Options{
+		ConfigDir:      configDir,
+		DumpConfig:     viper.GetBool("dump-config"),
+		ShowAPIKeys:    viper.GetBool("show-keys"),
+		Model:          viper.GetString("model"),
+		Provider:       viper.GetString("provider"),
+		Temperature:    viper.GetFloat64("temperature"),
+		MaxTokens:      viper.GetInt("max-tokens"),
+		LogFileName:    os.ExpandEnv(config.Logging.File),
+		DBFileName:     os.ExpandEnv(config.Database.Path),
+		DBTable:        config.Database.Table,
+		UseTUI:         viper.GetBool("tui"),
+		NoOutput:       viper.GetBool("no-output"),
+		ContinueChat:   viper.GetBool("continue"),
+		ConversationID: viper.GetInt("id"),
+	}
+
+	// If model not specified on command line, use default from config
+	if opts.Model == "" {
+		opts.Model = config.Defaults.Model
+	}
+	if opts.Provider == "" {
+		opts.Provider = config.Defaults.Provider
+	}
+
+	return opts, nil
 }
 
 func min(a, b int) int {
@@ -164,6 +194,30 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// GetModelConfig returns the configuration for a specific model
+func GetModelConfig(config *Config, provider, model string) (*ModelConfig, error) {
+	p, ok := config.Models[provider]
+	if !ok {
+		return nil, fmt.Errorf("provider %s not found", provider)
+	}
+
+	// Check direct model name
+	if m, ok := p.Models[model]; ok {
+		return &m, nil
+	}
+
+	// Check aliases
+	for _, m := range p.Models {
+		for _, alias := range m.Aliases {
+			if alias == model {
+				return &m, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("model %s not found for provider %s", model, provider)
 }
 
 // Maybe this shouldn't be in config...

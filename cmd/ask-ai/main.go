@@ -190,8 +190,8 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	var client LLM.Client
 	model := *args.Model
 
-	switch model {
-	case "chatgpt":
+	switch opts.Provider {
+	case "openai":
 		api_url := "https://api.openai.com/v1/"
 		client = LLM.NewOpenAI("openai", api_url)
 	case "claude":
