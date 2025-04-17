@@ -62,6 +62,7 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 
 	const ChatModelGrokBeta openai.ChatModel = "grok-beta"
 	const ChatModelGrok2 openai.ChatModel = "grok-2-latest"
+	const ChatModelGrok3 openai.ChatModel = "grok-3-beta"
 	const ChatModelDeepSeekChat openai.ChatModel = "deepseek-chat"
 	const ChatModelDeepSeekReasoner openai.ChatModel = "deepseek-reasoner"
 
@@ -76,7 +77,7 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 		// model = openai.ChatModelO1Mini // Tailored for coding and math
 		model = openai.ChatModelGPT4o
 	case "grok":
-		model = ChatModelGrok2
+		model = ChatModelGrok3
 	case "deepseek":
 		model = ChatModelDeepSeekReasoner
 	}
