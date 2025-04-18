@@ -60,7 +60,7 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 		}
 	}
 
-  model := openai.ChatModel(*args.Model)
+	model := openai.ChatModel(*args.Model)
 
 	// myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	ctx := context.Background()
