@@ -17,9 +17,10 @@ import (
 )
 
 // Provider holds configuration for an AI provider
+// The Models field captures all model entries under the provider block.
 type Provider struct {
 	APIKey string                 `mapstructure:"api_key"`
-	Models map[string]ModelConfig `mapstructure:"models"`
+	Models map[string]ModelConfig `mapstructure:",remain"`
 }
 
 // ModelConfig holds configuration for a specific model
@@ -31,20 +32,26 @@ type ModelConfig struct {
 }
 
 // Config holds the main configuration
+// It is primarily used for reading provider/model settings; logging and database
+// options are read directly via viper for Options initialization.
 type Config struct {
 	Models   map[string]Provider `mapstructure:"models"`
 	Defaults struct {
 		Model    string `mapstructure:"model"`
 		Provider string `mapstructure:"provider"`
+		// other defaults (e.g., max_tokens, context_length, system_prompt) are
+		// read via viper directly
 	} `mapstructure:"defaults"`
+	// Logging block (new config uses 'log')
 	Logging struct {
 		File       string `mapstructure:"file"`
 		Level      string `mapstructure:"level"`
 		MaxSize    int    `mapstructure:"max_size"`
 		MaxBackups int    `mapstructure:"max_backups"`
-	} `mapstructure:"logging"`
+	} `mapstructure:"log"`
+	// Database block
 	Database struct {
-		Path  string `mapstructure:"path"`
+		File  string `mapstructure:"file"`
 		Table string `mapstructure:"table"`
 	} `mapstructure:"database"`
 }
@@ -79,16 +86,26 @@ type Options struct {
 	ShowAPIKeys    bool
 	Model          string
 	Provider       string
-	Temperature    float64
-	MaxTokens      int
+	Temperature    float32 // model temperature
+	MaxTokens      int     // max tokens for response
+	ContextLength  int     // context window length
 	LogFileName    string
 	DBFileName     string
 	DBTable        string
 	SystemPrompt   string
 	UseTUI         bool
 	NoOutput       bool
+	NoRecord       bool
+	Quiet          bool
 	ContinueChat   bool
 	ConversationID int
+	// Terminal dimensions and tab width for TUI or dumping
+	ScreenWidth     int // total terminal width
+	ScreenTextWidth int // usable text width (terminal width minus pad, capped)
+	ScreenHeight    int // total terminal height
+	TabWidth        int // tab width for text wrapping
+	// Loaded full configuration, including providers and models
+	Config *Config
 }
 
 const Version = "0.3.3"
@@ -105,6 +122,13 @@ var (
 )
 
 func Initialize() (*Options, error) {
+	// viper uses a '.' for concatenating keys, so it can't be in a YAML key
+	// (eg gemini-2.5-pro). Changing the delimiter to '|' is a workaround.
+	// Note: can also just not use the '.' in the YAML key; the model_name
+	// string is what's passed to the API.
+	// NOTE: this isn't working so just removing the '.' from the config key
+	// viper.KeyDelimiter("|")
+
 	configDir := filepath.Join(os.Getenv("HOME"), ".config", "ask-ai")
 
 	// TODO: though I've put so much effort into the config file to read it
@@ -118,25 +142,48 @@ func Initialize() (*Options, error) {
 	}
 
 	width, height := determineScreenSize()
+	// Compute usable text width (terminal width minus pad, capped)
+	textWidth := width - widthPad
+	if textWidth > MaxTermTextWidth {
+		textWidth = MaxTermTextWidth
+	}
 
+	// Runtime options flags
 	pflag.StringP("model", "m", "", "Model to use")
 	pflag.StringP("provider", "p", "", "Provider to use")
+	// Temperature controls randomness in responses
 	pflag.Float64P("temperature", "t", 0.7, "Temperature for model responses")
-	pflag.IntP("max-tokens", "M", 1024, "Maximum tokens for response")
+	// Maximum tokens for a single response (default 512)
+	pflag.IntP("max-tokens", "M", 512, "Maximum tokens for response")
 	pflag.BoolP("continue", "c", false, "Continue last conversation")
 	pflag.IntP("id", "i", 0, "Conversation ID to continue")
 	pflag.BoolP("tui", "T", false, "Use TUI interface")
 	pflag.BoolP("no-output", "n", false, "Disable direct terminal output")
+	pflag.BoolP("quiet", "q", false, "Suppress non-essential output")
+	// Disable conversation recording
+	pflag.Bool("no-record", false, "Disable recording conversations to database")
 	pflag.BoolP("dump-config", "d", false, "Dump configuration and exit")
 	pflag.BoolP("show-keys", "k", false, "Show API keys in config dump")
+	// Additional runtime flags
+	// Context window length for prompts (default 2048)
+	pflag.Int("context-length", 2048, "Context window length for model responses")
+	// System prompt override
+	pflag.String("system-prompt", "", "System prompt to send to model")
 
+	// Bind flags to viper and parse CLI
 	viper.BindPFlags(pflag.CommandLine)
+	// Parse CLI flags to populate values
+	pflag.Parse()
 
 	// Set default configuration values
+	// Set default configuration values
 	viper.SetDefault("defaults.provider", "openai")
-	viper.SetDefault("defaults.model", "chatgpt-4o-latest")
-	viper.SetDefault("logging.file", filepath.Join(configDir, "ask-ai.log"))
-	viper.SetDefault("database.path", filepath.Join(configDir, "ask-ai.db"))
+	// Default model (fallback when not specified in config or CLI)
+	viper.SetDefault("defaults.model", "ollama")
+	// Default log file location
+	viper.SetDefault("log.file", filepath.Join(configDir, "ask-ai.log"))
+	// Default database file and table
+	viper.SetDefault("database.file", filepath.Join(configDir, "ask-ai.db"))
 	viper.SetDefault("database.table", "conversations")
 
 	// Read config file
@@ -161,30 +208,83 @@ func Initialize() (*Options, error) {
 	}
 
 	// Create options from config and flags
-	opts := &Options{
-		ConfigDir:      configDir,
-		DumpConfig:     viper.GetBool("dump-config"),
-		ShowAPIKeys:    viper.GetBool("show-keys"),
-		Model:          viper.GetString("model"),
-		Provider:       viper.GetString("provider"),
-		Temperature:    viper.GetFloat64("temperature"),
-		MaxTokens:      viper.GetInt("max-tokens"),
-		LogFileName:    os.ExpandEnv(config.Logging.File),
-		DBFileName:     os.ExpandEnv(config.Database.Path),
-		DBTable:        config.Database.Table,
-		UseTUI:         viper.GetBool("tui"),
-		NoOutput:       viper.GetBool("no-output"),
-		ContinueChat:   viper.GetBool("continue"),
-		ConversationID: viper.GetInt("id"),
+	opts := &Options{}
+	// Attach full parsed config for model lookup
+	opts.Config = &config
+
+	// Basic flags/booleans
+	opts.ConfigDir = configDir
+	opts.DumpConfig = viper.GetBool("dump-config")
+	opts.ShowAPIKeys = viper.GetBool("show-keys")
+	opts.UseTUI = viper.GetBool("tui")
+	opts.NoOutput = viper.GetBool("no-output")
+	// Respect no-record flag to skip saving conversations
+	opts.NoRecord = viper.GetBool("no-record")
+	opts.Quiet = viper.GetBool("quiet")
+	opts.ContinueChat = viper.GetBool("continue")
+	opts.ConversationID = viper.GetInt("id")
+	// Terminal size and tab width
+	opts.ScreenWidth = width
+	opts.ScreenTextWidth = textWidth
+	opts.ScreenHeight = height
+	opts.TabWidth = TabWidth
+
+	// Determine model selection: CLI flag > old-style config block > new-style defaults
+	modelConf := viper.Sub("model")
+	if m := viper.GetString("model"); m != "" {
+		opts.Model = m
+	} else if modelConf != nil && modelConf.IsSet("default") {
+		opts.Model = modelConf.GetString("default")
+	} else {
+		opts.Model = viper.GetString("defaults.model")
+	}
+	// Provider selection: CLI flag > new-style default
+	if p := viper.GetString("provider"); p != "" {
+		opts.Provider = p
+	} else {
+		opts.Provider = viper.GetString("defaults.provider")
 	}
 
-	// If model not specified on command line, use default from config
-	if opts.Model == "" {
-		opts.Model = config.Defaults.Model
+	// MaxTokens: CLI flag > old-style config block > new-style defaults > flag default
+	if modelConf != nil && modelConf.IsSet("max_tokens") {
+		opts.MaxTokens = modelConf.GetInt("max_tokens")
+	} else if mt := viper.GetInt("defaults.max_tokens"); mt != 0 {
+		opts.MaxTokens = mt
+	} else {
+		opts.MaxTokens = viper.GetInt("max-tokens")
 	}
-	if opts.Provider == "" {
-		opts.Provider = config.Defaults.Provider
+
+	// ContextLength: CLI flag > old-style config block > new-style defaults > flag default
+	if modelConf != nil && modelConf.IsSet("context_length") {
+		opts.ContextLength = modelConf.GetInt("context_length")
+	} else if cl := viper.GetInt("defaults.context_length"); cl != 0 {
+		opts.ContextLength = cl
+	} else {
+		opts.ContextLength = viper.GetInt("context-length")
 	}
+
+	// Temperature: CLI flag > old-style config block > new-style defaults > flag default
+	if modelConf != nil && modelConf.IsSet("temperature") {
+		opts.Temperature = float32(modelConf.GetFloat64("temperature"))
+	} else if t := viper.GetFloat64("defaults.temperature"); t != 0 {
+		opts.Temperature = float32(t)
+	} else {
+		opts.Temperature = float32(viper.GetFloat64("temperature"))
+	}
+
+	// SystemPrompt: CLI flag > old-style config block > new-style defaults
+	if sp := viper.GetString("system-prompt"); sp != "" {
+		opts.SystemPrompt = sp
+	} else if modelConf != nil && modelConf.IsSet("system_prompt") {
+		opts.SystemPrompt = modelConf.GetString("system_prompt")
+	} else if sp := viper.GetString("defaults.system_prompt"); sp != "" {
+		opts.SystemPrompt = sp
+	}
+
+	// Log and database settings
+	opts.LogFileName = os.ExpandEnv(viper.GetString("log.file"))
+	opts.DBFileName = os.ExpandEnv(viper.GetString("database.file"))
+	opts.DBTable = viper.GetString("database.table")
 
 	return opts, nil
 }
@@ -317,8 +417,9 @@ func checkConfigFlag() string {
 				return os.Args[i+1]
 			}
 		}
-		if len(arg) > 8 && arg[:8] == "--config=" {
-			return arg[8:]
+		cfg_len := len("--config=")
+		if len(arg) > 8 && arg[:cfg_len] == "--config=" {
+			return arg[cfg_len:]
 		}
 	}
 	return ""
@@ -340,8 +441,10 @@ oopsies:
 
 func setupConfigFile() error {
 	cfgFile := checkConfigFlag()
+	// fmt.Printf("checkConfigFlag return: %s\n", cfgFile)
 
 	if cfgFile != "" {
+		fmt.Printf("Setting config file: %s\n", cfgFile)
 		viper.SetConfigFile(expandHomePath(cfgFile))
 	} else {
 		viper.SetConfigName("config")
