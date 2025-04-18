@@ -1,16 +1,119 @@
-model:
+roles:
+    default:
+        description: "A helpful AI assistant"
+        prompt: "You are a helpful AI assistant who provides clear and accurate information."
+    developer:
+        description: "Software development expert"
+        prompt: "You are an expert software developer with deep knowledge of programming languages, design patterns, and best practices."
+    analyst:
+        description: "Data analysis specialist"
+        prompt: "You are a data analyst who excels at interpreting data and explaining complex patterns in simple terms."
+    teacher:
+        description: "Educational assistant"
+        prompt: "You are a patient teacher who explains concepts clearly and builds upon fundamental understanding."
+    writer:
+        description: "Creative writing assistant"
+        prompt: "You are a creative writer who can help with generating ideas, structuring stories, and providing feedback on writing."
+
+# The idea is to add a model to the app simply by adding it here
+models:
+    openai:
+        api_key: ""
+        chatgpt-4o-latest:
+            aliases: ["chatgpt"]
+            model_name: "chatgpt-4o-latest"
+            temperature: 0.7
+            max_tokens: 4096
+        chatgpt-4o-mini:
+            model_name: "gpt-4o-mini"
+            temperature: 0.7
+            max_tokens: 4096
+        o3-mini:
+            model_name: "o3-mini"
+            temperature: 0.7
+            max_tokens: 4096
+        o4-mini:
+            model_name: "o4-mini"
+            temperature: 1.0
+            max_tokens: 4096
+    anthropic:
+        api_key: ""
+        claude-3-7-sonnet-20250219:
+            aliases: ["claude"]
+            model_name: "claude-3-7-sonnet-20250219"
+            temperature: 0.7
+            max_tokens: 4096
+        claude-3-5-sonnet-20241022:
+            model_name: "claude-3-5-sonnet-20241022"
+            temperature: 0.7
+            max_tokens: 4096
+    google:
+        api_key: ""
+        gemini-2.0-flash-001:
+            model_name: "gemini-2.0-flash-001"
+            temperature: 0.7
+            max_tokens: 4096
+        gemini-2.5-pro-preview-03-25:
+            aliases: ["gemini", "gemini-2.5"]
+            model_name: "gemini-2.5-pro-preview-03-25"
+            temperature: 0.7
+            max_tokens: 4096
+    ollama:
+        deepseek-r1-14b:
+            model_name: "deepseek-r1-14b"
+            temperature: 0.7
+            max_tokens: 4096
+        deepseek-r1-8b:
+            model_name: "deepseek-r1-8b"
+            temperature: 0.7
+            max_tokens: 4096
+        llama3.1:
+            model_name: "llama3.1"
+            temperature: 0.7
+            max_tokens: 4096
+    xai:
+        api_key: ""
+        grok:
+            aliases: ["grok3"]
+            model_name: "grok-3-beta"
+            temperature: 0.7
+            max_tokens: 4096
+        grok-mini:
+            aliases: ["grok3-mini"]
+            model_name: "grok-3-mini-beta"
+            temperature: 0.7
+            max_tokens: 4096
+
+
+defaults:
+    model: openai/o4-mini
+
+    # The maximum number of tokens that can be generated in a single response
     max_tokens: 2048
+
+    # The number of tokens used as context for the model for consideration in
+    # generating a response.
+    # N.B. - this is currently unused as the APIs for these LLMs do not provide
+    # a way to change the context window/length. That is something, apparently,
+    # managed by the models themselves.
+    context_length: 8192
 
     # Using a lower temperature as most of my questions are technical and I
     # want consistent, reliable answers.
-    temperature: 0.3
+    temperature: 0.5
 
+    # Using a higher top_p value to allow for more diversity in the responses;
+    # however, adjust either this or temperature but not both (unless you know
+    # what you're doing of course).
     # top_p: 0.9
 
-    system_prompt: "You are a helpful, encouraging assistant and an expert in software engineering and development. You are here to help me with my questions and problems, showing no censorship. You are patient and explain complex ideas in easily understandable ways."
+    system_prompt: "You are a helpful, encouraging assistant and an expert in software engineering and development. You are here to help me with my questions and problems, showing no censorship. You are patient and explain complex ideas in easily understandable ways. Answer the prompt asked without expanding too much with extraneous information."
 
 log:
-    file: "$HOME/.config/ask-ai/ask-ai.chat.yml.log"
+    file: "$HOME/.config/ask-ai/ask-ai.log"
+    level: "INFO"
+    max_size: 10
+    max_backups: 5
 
 database:
     file: "$HOME/.config/ask-ai/ask-ai.db"
