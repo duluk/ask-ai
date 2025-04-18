@@ -4,8 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"unicode"
+
+	"github.com/spf13/viper"
 )
 
 // Gemini created this function, along with tokenizeWord. It's not perfect by
@@ -57,28 +61,48 @@ func tokenizeWord(word string) int32 {
 }
 
 func getClientKey(llm string) string {
-	keyUpper := strings.ToUpper(llm) + "_API_KEY"
-	keyLower := strings.ToLower(llm) + "-api-key"
-
-	key := os.Getenv(keyUpper)
-	// TODO this should attempt XDG_CONFIG_HOME first, then HOME
-	home := os.Getenv("HOME")
-	if key == "" {
-		file, err := os.Open(home + "/.config/ask-ai/" + keyLower)
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
+	// 1) Try API key from config file via viper
+	cfgKey := fmt.Sprintf("models.%s.api_key", llm)
+	if key := viper.GetString(cfgKey); key != "" {
+		// If the api_key contains whitespace, treat it as a shell command to run
+		if strings.ContainsAny(key, " \t") {
+			out, err := exec.Command("sh", "-c", key).Output()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error executing API key command for %s: %v\n", llm, err)
+				os.Exit(1)
+			}
+			return strings.TrimSpace(string(out))
 		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		if scanner.Scan() {
-			key = scanner.Text()
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(1)
-		}
+		return key
 	}
-	return key
+
+	// 2) Fallback to environment variable
+	keyEnv := strings.ToUpper(llm) + "_API_KEY"
+	if key := os.Getenv(keyEnv); key != "" {
+		return key
+	}
+
+	// 3) Fallback: read key from file under XDG or HOME config dir
+	cfgHome := os.Getenv("XDG_CONFIG_HOME")
+	if cfgHome == "" {
+		cfgHome = filepath.Join(os.Getenv("HOME"), ".config")
+	}
+	keyFile := strings.ToLower(llm) + "-api-key"
+	filePath := filepath.Join(cfgHome, "ask-ai", keyFile)
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading API key for %s: %v\n", llm, err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	if scanner.Scan() {
+		return scanner.Text()
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading API key for %s: %v\n", llm, err)
+		os.Exit(1)
+	}
+	return ""
 }
