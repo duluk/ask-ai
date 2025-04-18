@@ -28,19 +28,4 @@
 # Allow all directories first
 !*/
 
-# But immediately block these directories and everything in them
-node_modules/
-dist/
-coverage/
-
-# TypeScript files - but not in the blocked directories above
-!*.ts
-!*.js
-!*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!jest.config.js
-
-event.example.ts
-generator.example.ts
+!config.new.yml

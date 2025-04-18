@@ -2,6 +2,7 @@ package LLM
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -19,9 +20,12 @@ func TestGetClientKey(t *testing.T) {
 	os.Unsetenv("TEST_API_KEY")
 
 	home := os.Getenv("HOME")
-	os.MkdirAll(home+"/.config/ask-ai", 0o755)
-	os.WriteFile(home+"/.config/ask-ai/test-api-key", []byte("file-test-key"), 0o644)
-	defer os.Remove(home + "/.config/ask-ai/test-api-key")
+	// Ensure we write into the same config dir used by getClientKey
+	cfgDir := filepath.Join(home, ".config", "ask-ai")
+	os.MkdirAll(cfgDir, 0o755)
+	keyPath := filepath.Join(cfgDir, "test-api-key")
+	os.WriteFile(keyPath, []byte("file-test-key"), 0o644)
+	defer os.Remove(keyPath)
 
 	key = getClientKey("test")
 	if key != "file-test-key" {
