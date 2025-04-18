@@ -82,13 +82,19 @@ func (cs *Anthropic) ChatStream(args ClientArgs, termWidth int, tabWidth int, st
 
 	myInputEstimate := EstimateTokens(*args.Prompt + *args.SystemPrompt)
 
+	// Determine anthropic model: use provided model from args or default
+	var model anthropic.Model
+	if args.Model != nil && *args.Model != "" {
+		model = anthropic.Model(*args.Model)
+	} else {
+		model = anthropic.ModelClaude3Dot5Haiku20241022
+	}
+
 	resp, err := client.CreateMessagesStream(
 		context.Background(),
 		anthropic.MessagesStreamRequest{
 			MessagesRequest: anthropic.MessagesRequest{
-				// TODO: figure out how to specify different anthropic models
-				// Model: anthropic.ModelClaude3Dot5Sonnet20241022,
-				Model:       anthropic.ModelClaude3Dot5Haiku20241022,
+				Model:       model,
 				Messages:    msgCtx,
 				MaxTokens:   *args.MaxTokens,
 				Temperature: args.Temperature,

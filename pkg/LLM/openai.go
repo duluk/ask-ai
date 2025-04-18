@@ -60,26 +60,7 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 		}
 	}
 
-	const ChatModelGrokBeta openai.ChatModel = "grok-beta"
-	const ChatModelGrok2 openai.ChatModel = "grok-2-latest"
-	const ChatModelDeepSeekChat openai.ChatModel = "deepseek-chat"
-	const ChatModelDeepSeekReasoner openai.ChatModel = "deepseek-reasoner"
-
-	var model openai.ChatModel
-	switch *args.Model {
-	case "chatgpt":
-		// N.B. - the o1 models are a little weird, or I'm using them wrong.
-		// They don't support temperature and they generate a ton of text,
-		// immediately, just cutting off at max tokens. Switching to GPT-4o and
-		// asking the same prompts resulted in much more reasonable responses.
-		// model = openai.ChatModelO1Preview2024_09_12
-		// model = openai.ChatModelO1Mini // Tailored for coding and math
-		model = openai.ChatModelGPT4o
-	case "grok":
-		model = ChatModelGrok2
-	case "deepseek":
-		model = ChatModelDeepSeekReasoner
-	}
+	model := openai.ChatModel(*args.Model)
 
 	// myInputEstimate := EstimateTokens(msgCtx + *args.Prompt + *args.SystemPrompt)
 	ctx := context.Background()

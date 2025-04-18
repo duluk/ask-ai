@@ -34,7 +34,9 @@ func (cs *Google) SimpleChat(args ClientArgs) error {
 	client := cs.Client
 	ctx := cs.Context
 
-	model := client.GenerativeModel("gemini-1.5-pro")
+	// Use configured model name (e.g., gemini-2.0-flash-001) instead of hardcoded value
+	modelName := *args.Model
+	model := client.GenerativeModel(modelName)
 	// model := client.GenerativeModel("gemini-exp-1114")
 	model.SetMaxOutputTokens(int32(*args.MaxTokens))
 	resp, err := model.GenerateContent(ctx, genai.Text(*args.Prompt))
@@ -74,7 +76,9 @@ func (cs *Google) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 	client := cs.Client
 	ctx := cs.Context
 
-	model := client.GenerativeModel("gemini-2.0-flash")
+	// Use configured model name provided via args.Model
+	modelName := *args.Model
+	model := client.GenerativeModel(modelName)
 	model.SetTemperature(*args.Temperature)
 	model.SetMaxOutputTokens(int32(*args.MaxTokens))
 	model.SystemInstruction = genai.NewUserContent(genai.Text(*args.SystemPrompt))

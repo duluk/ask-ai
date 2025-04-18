@@ -422,40 +422,58 @@ type streamChunkMsg struct {
 }
 
 func (m *Model) startStreaming() tea.Cmd {
+	// Determine provider and model key (support provider/model syntax)
+	spec := *m.clientArgs.Model
+	provider := m.opts.Provider
+	modelKey := spec
+	if idx := strings.Index(spec, "/"); idx >= 0 {
+		provider = spec[:idx]
+		modelKey = spec[idx+1:]
+		m.opts.Provider = provider
+		// update clientArgs.Model to the pure model key for recording
+		*m.clientArgs.Model = modelKey
+	}
+	// Load model configuration from config file
+	modelConf, err := config.GetModelConfig(m.opts.Config, provider, modelKey)
+	if err != nil {
+		return func() tea.Msg {
+			return streamChunkMsg{err: fmt.Errorf("model %q not found for provider %q", modelKey, provider), done: true}
+		}
+	}
+	// Override args with API-specific configuration
+	apiModel := modelConf.ModelName
+	m.clientArgs.Model = &apiModel
+	apiTemp := float32(modelConf.Temperature)
+	m.clientArgs.Temperature = &apiTemp
+	apiMax := modelConf.MaxTokens
+	m.clientArgs.MaxTokens = &apiMax
+	// Initialize the LLM client based on provider
 	var client LLM.Client
-	model := *m.clientArgs.Model
-
-	switch model {
-	case "chatgpt":
-		api_url := "https://api.openai.com/v1/"
-		client = LLM.NewOpenAI("openai", api_url)
-	case "grok":
-		api_url := "https://api.x.ai/v1/"
-		client = LLM.NewOpenAI("xai", api_url)
-	case "claude":
+	switch provider {
+	case "openai":
+		client = LLM.NewOpenAI("openai", "https://api.openai.com/v1/")
+	case "claude", "anthropic":
 		client = LLM.NewAnthropic()
-	case "gemini":
+	case "gemini", "google":
 		client = LLM.NewGoogle()
 	case "ollama":
 		client = LLM.NewOllama()
-	// Add other cases as needed
+	case "grok", "xai":
+		client = LLM.NewOpenAI("xai", "https://api.x.ai/v1/")
 	default:
 		return func() tea.Msg {
-			return streamChunkMsg{err: fmt.Errorf("unknown model: %s", model), done: true}
+			return streamChunkMsg{err: fmt.Errorf("unknown provider: %q", provider), done: true}
 		}
 	}
-
-	// Get the stream channel from the client
+	// Start the chat stream
 	_, streamChan, err := client.Chat(m.clientArgs, m.opts.ScreenTextWidth, m.opts.TabWidth)
 	if err != nil {
 		return func() tea.Msg {
 			return streamChunkMsg{err: err, done: true}
 		}
 	}
-
 	m.streamChan = streamChan
 	m.fullResponse = ""
-
 	return waitForStreamChunk(m, m.streamChan)
 }
 

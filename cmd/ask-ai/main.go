@@ -187,28 +187,50 @@ func main() {
 }
 
 func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB) {
-	var client LLM.Client
 	model := *args.Model
+	// Parse model spec of form "provider/modelKey" or just "modelKey"
+	spec := model
+	provider := opts.Provider
+	modelKey := spec
+	if idx := strings.Index(spec, "/"); idx >= 0 {
+		provider = spec[:idx]
+		modelKey = spec[idx+1:]
+		opts.Provider = provider
+		// Use only the model key for recording
+		model = modelKey
+	}
+
+	modelConf, err := config.GetModelConfig(opts.Config, provider, modelKey)
+	if err != nil {
+		fmt.Printf("Model %q not found for provider %q\n", modelKey, provider)
+		os.Exit(1)
+	}
+
+	// Override args with API-specific values
+	apiModel := modelConf.ModelName
+	args.Model = &apiModel
+	apiTemp := float32(modelConf.Temperature)
+	args.Temperature = &apiTemp
+	apiMax := modelConf.MaxTokens
+	args.MaxTokens = &apiMax
+
+	var client LLM.Client
 
 	switch opts.Provider {
 	case "openai":
-		api_url := "https://api.openai.com/v1/"
-		client = LLM.NewOpenAI("openai", api_url)
-	case "claude":
+		apiURL := "https://api.openai.com/v1/"
+		client = LLM.NewOpenAI("openai", apiURL)
+	case "claude", "anthropic":
 		client = LLM.NewAnthropic()
-	case "gemini":
+	case "gemini", "google":
 		client = LLM.NewGoogle()
-	case "grok":
-		api_url := "https://api.x.ai/v1/"
-		client = LLM.NewOpenAI("xai", api_url)
-	// case "deepseek":
-	// 	api_url := "https://api.deepseek.com/v1/"
-	// 	client = LLM.NewOpenAI("deepseek", api_url)
-	// 	// client = LLM.NewDeepSeek()
 	case "ollama":
 		client = LLM.NewOllama()
+	case "grok", "xai":
+		apiURL := "https://api.x.ai/v1/"
+		client = LLM.NewOpenAI("xai", apiURL)
 	default:
-		fmt.Println("Unknown model: ", model)
+		fmt.Printf("Unknown provider: %q\n", provider)
 		os.Exit(1)
 	}
 
