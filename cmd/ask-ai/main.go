@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/pflag"
 
@@ -242,17 +243,52 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		fmt.Println("Assistant: ")
 	}
 
+	// Send the chat request and start streaming responses
 	resp, streamChan, err := client.Chat(args, opts.ScreenTextWidth, opts.TabWidth)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(1)
 	}
+	// Spinner while waiting for the model to respond
+	spinnerActive := !opts.Quiet && !opts.NoOutput
+	var spinnerDone chan struct{}
+	var spinnerAck chan struct{}
+	if spinnerActive {
+		spinnerDone = make(chan struct{})
+		spinnerAck = make(chan struct{})
+		go func() {
+			chars := []rune{'|', '/', '-', '\\'}
+			i := 0
+			for {
+				select {
+				case <-spinnerDone:
+					// clear spinner line
+					fmt.Printf("\r\033[K")
+					close(spinnerAck)
+					return
+				default:
+					fmt.Printf("\rWaiting for response... %c", chars[i%len(chars)])
+					time.Sleep(100 * time.Millisecond)
+					i++
+				}
+			}
+		}()
+	}
 
+	// Prepare line wrapper for streaming output
 	lw := linewrap.NewLineWrapper(opts.ScreenTextWidth, opts.TabWidth, os.Stdout)
 
 	// Collect the full response while printing chunks
 	fullResponse := ""
+	// Stop spinner on first chunk and wait for it to clear the line
+	spinnerStopped := false
 	for chunk := range streamChan {
+		if spinnerActive && !spinnerStopped {
+			// signal spinner to stop and await its acknowledgment
+			close(spinnerDone)
+			<-spinnerAck
+			spinnerStopped = true
+		}
 		if chunk.Error != nil {
 			fmt.Println("Error: ", chunk.Error)
 			os.Exit(1)
