@@ -1,7 +1,9 @@
 roles:
     default:
         description: "A helpful AI assistant"
-        prompt: "You are a helpful AI assistant who provides clear and accurate information."
+        prompt:
+          - You are a helpful AI assisant
+          - You provide clear and accurate information
     developer:
         description: "Software development expert"
         prompt: "You are an expert software developer with deep knowledge of programming languages, design patterns, and best practices."
