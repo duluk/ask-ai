@@ -57,7 +57,6 @@ func main() {
 		fmt.Println("Error initializing logger: ", err)
 		os.Exit(1)
 	}
-	logger.Info("Initialized config", "opts", opts)
 
 	// If DB exists, just opens it; otherwise, creates it first
 	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
@@ -103,7 +102,6 @@ func main() {
 			model = promptContext[len(promptContext)-1].Model
 		}
 	}
-	logger.Info("Conversation ID", "convID", convID)
 
 	clientArgs := LLM.ClientArgs{
 		Model:        &model,
@@ -241,6 +239,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	args.Temperature = &apiTemp
 	apiMax := modelConf.MaxTokens
 	args.MaxTokens = &apiMax
+	logger.Info("Processing prompt", "->", *args.Prompt, "convID", *args.ConvID)
 	logger.Info("Using model", "provider", provider, "model", model, "temperature", apiTemp, "maxTokens", apiMax)
 
 	var client LLM.Client
