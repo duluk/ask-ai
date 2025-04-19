@@ -122,24 +122,19 @@ func (sqlDB *ChatDB) LoadConversationFromDB(convID int) ([]LLM.LLMConversations,
 	return conversations, nil
 }
 
+// GetLastConversationID returns the highest conversation ID, or 0 if none exist
 func (sqlDB *ChatDB) GetLastConversationID() (int, error) {
-	rows, err := sqlDB.db.Query(`
-		SELECT MAX(conv_id) FROM ` + sqlDB.dbTable + `;
-	`)
-	if err != nil {
+	query := `SELECT MAX(conv_id) FROM ` + sqlDB.dbTable + `;`
+	row := sqlDB.db.QueryRow(query)
+	// Use sql.NullInt64 to handle NULL when no rows
+	var maxID sql.NullInt64
+	if err := row.Scan(&maxID); err != nil {
 		return 0, fmt.Errorf("%v", err)
 	}
-	defer rows.Close()
-
-	var convID int
-	for rows.Next() {
-		err := rows.Scan(&convID)
-		if err != nil {
-			return 0, fmt.Errorf("%v", err)
-		}
+	if !maxID.Valid {
+		return 0, nil
 	}
-
-	return convID, nil
+	return int(maxID.Int64), nil
 }
 
 // TODO: probably want a different return structure, so that the ID and
