@@ -8,7 +8,10 @@ import (
 )
 
 func NewDeepSeek() *DeepSeek {
-	apiKey := getClientKey("deepseek")
+	apiKey, err := getClientKey("deepseek")
+	if err != nil {
+		panic(err)
+	}
 	client := deepseek.NewClient(apiKey)
 
 	return &DeepSeek{APIKey: apiKey, Client: client}

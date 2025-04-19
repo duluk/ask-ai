@@ -10,7 +10,10 @@ import (
 )
 
 func NewOpenAI(apiLLC string, apiURL string) *OpenAI {
-	apiKey := getClientKey(apiLLC)
+	apiKey, err := getClientKey(apiLLC)
+	if err != nil {
+		panic(err)
+	}
 	client := openai.NewClient(
 		option.WithAPIKey(apiKey),
 		option.WithBaseURL(apiURL),

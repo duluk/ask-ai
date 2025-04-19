@@ -43,7 +43,10 @@ func convertToAnthropicMessages(chatHist []LLMConversations) []anthropic.Message
 }
 
 func NewAnthropic() *Anthropic {
-	api_key := getClientKey("anthropic")
+	api_key, err := getClientKey("anthropic")
+	if err != nil {
+		panic(err)
+	}
 	client := anthropic.NewClient(api_key)
 
 	return &Anthropic{APIKey: api_key, Client: client}

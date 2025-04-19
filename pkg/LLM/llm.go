@@ -61,11 +61,11 @@ func tokenizeWord(word string) int32 {
 }
 
 // TODO: what should the precedence be? Which should be used first, env or config?
-func getClientKey(llm string) string {
+func getClientKey(llm string) (string, error) {
 	// 1) First try environment variable
 	keyEnv := strings.ToUpper(llm) + "_API_KEY"
 	if key := os.Getenv(keyEnv); key != "" {
-		return key
+		return key, nil
 	}
 
 	// 2) Try API key from config file via viper
@@ -78,9 +78,9 @@ func getClientKey(llm string) string {
 				fmt.Fprintf(os.Stderr, "Error executing API key command for %s: %v\n", llm, err)
 				os.Exit(1)
 			}
-			return strings.TrimSpace(string(out))
+			return strings.TrimSpace(string(out)), nil
 		}
-		return key
+		return key, nil
 	}
 
 	// 3) Fallback: read key from file under XDG or HOME config dir
@@ -99,11 +99,11 @@ func getClientKey(llm string) string {
 
 	scanner := bufio.NewScanner(file)
 	if scanner.Scan() {
-		return scanner.Text()
+		return scanner.Text(), nil
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading API key for %s: %v\n", llm, err)
 		os.Exit(1)
 	}
-	return ""
+	return "", fmt.Errorf("No API key found for %s", llm)
 }

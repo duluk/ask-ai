@@ -6,14 +6,17 @@ import (
 	"testing"
 )
 
-func intPtr(i int) *int {
-	return &i
-}
+// func intPtr(i int) *int {
+// 	return &i
+// }
 
 func TestGetClientKey(t *testing.T) {
 	// Test environment variable (first option)
 	os.Setenv("TEST_API_KEY", "test-key")
-	key := getClientKey("test")
+	key, err := getClientKey("test")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	if key != "test-key" {
 		t.Errorf("Expected 'test-key', got '%s'", key)
 	}
@@ -27,7 +30,10 @@ func TestGetClientKey(t *testing.T) {
 	os.WriteFile(keyPath, []byte("file-test-key"), 0o644)
 	defer os.Remove(keyPath)
 
-	key = getClientKey("test")
+	key, err = getClientKey("test")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 	if key != "file-test-key" {
 		t.Errorf("Expected 'file-test-key', got '%s'", key)
 	}

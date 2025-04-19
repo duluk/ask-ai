@@ -20,7 +20,10 @@ func buildPrompt(msgCtx []LLMConversations, newPrompt string) string {
 }
 
 func NewGoogle() *Google {
-	apiKey := getClientKey("google")
+	apiKey, err := getClientKey("google")
+	if err != nil {
+		panic(err)
+	}
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
 	if err != nil {
