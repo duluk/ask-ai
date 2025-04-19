@@ -31,10 +31,18 @@ type ModelConfig struct {
 	MaxTokens   int      `mapstructure:"max_tokens"`
 }
 
+// RoleConfig holds configuration for a specific role
+// Prompt may be a single string or an array of strings; merged into []string
+type RoleConfig struct {
+	Description string `mapstructure:"description"`
+	Prompt      []string
+}
+
 // Config holds the main configuration
 // It is primarily used for reading provider/model settings; logging and database
 // options are read directly via viper for Options initialization.
 type Config struct {
+	Roles    map[string]RoleConfig
 	Models   map[string]Provider `mapstructure:"models"`
 	Defaults struct {
 		Model    string `mapstructure:"model"`
@@ -126,7 +134,8 @@ func Initialize() (*Options, error) {
 	// (eg gemini-2.5-pro). Changing the delimiter to '|' is a workaround.
 	// Note: can also just not use the '.' in the YAML key; the model_name
 	// string is what's passed to the API.
-	// NOTE: this isn't working so just removing the '.' from the config key
+	// NOTE: this function isn't working so just removing the '.' from the
+	// config key
 	// viper.KeyDelimiter("|")
 
 	configDir := filepath.Join(os.Getenv("HOME"), ".config", "ask-ai")
@@ -169,6 +178,8 @@ func Initialize() (*Options, error) {
 	pflag.Int("context-length", 2048, "Context window length for model responses")
 	// System prompt override
 	pflag.String("system-prompt", "", "System prompt to send to model")
+	// Role selection override (use role prompts from config)
+	pflag.StringP("role", "r", "", "Role to use for system prompt (as defined in config)")
 
 	// Bind flags to viper and parse CLI
 	viper.BindPFlags(pflag.CommandLine)
@@ -205,6 +216,35 @@ func Initialize() (*Options, error) {
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("error parsing config: %w", err)
+	}
+	// Parse roles section if present
+	if rawRoles := viper.Get("roles"); rawRoles != nil {
+		if rm, ok := rawRoles.(map[string]any); ok {
+			config.Roles = make(map[string]RoleConfig, len(rm))
+			for name, entry := range rm {
+				em, ok := entry.(map[string]any)
+				if !ok {
+					continue
+				}
+				var rc RoleConfig
+				if d, ok := em["description"].(string); ok {
+					rc.Description = d
+				}
+				if p, ok := em["prompt"]; ok {
+					switch v := p.(type) {
+					case string:
+						rc.Prompt = []string{v}
+					case []any:
+						for _, item := range v {
+							if s, ok := item.(string); ok {
+								rc.Prompt = append(rc.Prompt, s)
+							}
+						}
+					}
+				}
+				config.Roles[name] = rc
+			}
+		}
 	}
 
 	// Create options from config and flags
@@ -272,9 +312,15 @@ func Initialize() (*Options, error) {
 		opts.Temperature = float32(viper.GetFloat64("temperature"))
 	}
 
-	// SystemPrompt: CLI flag > old-style config block > new-style defaults
+	// SystemPrompt: CLI flag > role selection > old-style config block > new-style defaults
 	if sp := viper.GetString("system-prompt"); sp != "" {
 		opts.SystemPrompt = sp
+	} else if roleName := viper.GetString("role"); roleName != "" {
+		if rc, ok := config.Roles[roleName]; ok {
+			opts.SystemPrompt = strings.Join(rc.Prompt, "\n")
+		} else {
+			return nil, fmt.Errorf("role %q not found in config", roleName)
+		}
 	} else if modelConf != nil && modelConf.IsSet("system_prompt") {
 		opts.SystemPrompt = modelConf.GetString("system_prompt")
 	} else if sp := viper.GetString("defaults.system_prompt"); sp != "" {
