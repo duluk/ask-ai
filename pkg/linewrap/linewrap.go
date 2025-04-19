@@ -32,6 +32,14 @@ func (lw *LineWrapper) SetMaxWidth(width int) {
 	lw.maxWidth = width
 }
 
+func (lw *LineWrapper) Reset() {
+	lw.currWidth = 0
+}
+
+func (lw *LineWrapper) SetCurrWidth(width int) {
+	lw.currWidth = width
+}
+
 // Allow wrapping for input that comes in chunks, versus building the line and
 // then splitting it and printing the whole line at once.
 func (lw *LineWrapper) Write(data []byte) int {

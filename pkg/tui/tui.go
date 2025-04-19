@@ -241,6 +241,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Add Assistant prefix before streaming starts
 			m.content += assistantStyle.Render("Assistant: ")
+			m.lineWrapper.SetCurrWidth(len("Assistant: "))
 
 			// TODO: add spinner
 			m.processing = true
@@ -303,6 +304,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.done {
 				m.content += "\n\n"
 				m.processing = false
+				m.lineWrapper.Reset()
 				m.statusMsg = fmt.Sprintf("Model: %s | ConvID: %d | /help for commands", *m.clientArgs.Model, *m.clientArgs.ConvID)
 				m.saveConversation()
 				m.updateContext()
