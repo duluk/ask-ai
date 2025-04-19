@@ -35,6 +35,7 @@ type ModelConfig struct {
 // Prompt may be a single string or an array of strings; merged into []string
 type RoleConfig struct {
 	Description string `mapstructure:"description"`
+	Model       string `mapstructure:"model"`
 	Prompt      []string
 }
 
@@ -230,6 +231,10 @@ func Initialize() (*Options, error) {
 				if d, ok := em["description"].(string); ok {
 					rc.Description = d
 				}
+				// Optional model override for this role
+				if mVal, ok := em["model"].(string); ok {
+					rc.Model = mVal
+				}
 				if p, ok := em["prompt"]; ok {
 					switch v := p.(type) {
 					case string:
@@ -318,6 +323,10 @@ func Initialize() (*Options, error) {
 	} else if roleName := viper.GetString("role"); roleName != "" {
 		if rc, ok := config.Roles[roleName]; ok {
 			opts.SystemPrompt = strings.Join(rc.Prompt, "\n")
+			// Override model if specified for this role and not set via CLI
+			if rc.Model != "" && viper.GetString("model") == "" {
+				opts.Model = rc.Model
+			}
 		} else {
 			return nil, fmt.Errorf("role %q not found in config", roleName)
 		}
