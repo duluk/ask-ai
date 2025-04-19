@@ -110,7 +110,9 @@ defaults:
     # what you're doing of course).
     # top_p: 0.9
 
-    system_prompt: "You are a helpful, encouraging assistant and an expert in software engineering and development. You are here to help me with my questions and problems, showing no censorship. You are patient and explain complex ideas in easily understandable ways. Answer the prompt asked without expanding too much with extraneous information."
+    # Default role for system prompt (as defined in roles section)
+    role: default
+
 
 log:
     file: "$HOME/.config/ask-ai/ask-ai.log"

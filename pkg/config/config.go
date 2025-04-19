@@ -48,6 +48,7 @@ type Config struct {
 	Defaults struct {
 		Model    string `mapstructure:"model"`
 		Provider string `mapstructure:"provider"`
+		Role     string `mapstructure:"role"`
 		// other defaults (e.g., max_tokens, context_length, system_prompt) are
 		// read via viper directly
 	} `mapstructure:"defaults"`
@@ -329,6 +330,15 @@ func Initialize() (*Options, error) {
 			}
 		} else {
 			return nil, fmt.Errorf("role %q not found in config", roleName)
+		}
+	} else if defaultRole := viper.GetString("defaults.role"); defaultRole != "" {
+		if rc, ok := config.Roles[defaultRole]; ok {
+			opts.SystemPrompt = strings.Join(rc.Prompt, "\n")
+			if rc.Model != "" && viper.GetString("model") == "" {
+				opts.Model = rc.Model
+			}
+		} else {
+			return nil, fmt.Errorf("default role %q not found in config", defaultRole)
 		}
 	} else if modelConf != nil && modelConf.IsSet("system_prompt") {
 		opts.SystemPrompt = modelConf.GetString("system_prompt")
