@@ -60,8 +60,15 @@ func tokenizeWord(word string) int32 {
 	return tokens
 }
 
+// TODO: what should the precedence be? Which should be used first, env or config?
 func getClientKey(llm string) string {
-	// 1) Try API key from config file via viper
+	// 1) First try environment variable
+	keyEnv := strings.ToUpper(llm) + "_API_KEY"
+	if key := os.Getenv(keyEnv); key != "" {
+		return key
+	}
+
+	// 2) Try API key from config file via viper
 	cfgKey := fmt.Sprintf("models.%s.api_key", llm)
 	if key := viper.GetString(cfgKey); key != "" {
 		// If the api_key contains whitespace, treat it as a shell command to run
@@ -73,12 +80,6 @@ func getClientKey(llm string) string {
 			}
 			return strings.TrimSpace(string(out))
 		}
-		return key
-	}
-
-	// 2) Fallback to environment variable
-	keyEnv := strings.ToUpper(llm) + "_API_KEY"
-	if key := os.Getenv(keyEnv); key != "" {
 		return key
 	}
 
