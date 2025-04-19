@@ -9,8 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const dbPath = "./test.db"
-const dbTable = "conversations_test"
+const (
+	dbPath  = "./test.db"
+	dbTable = "conversations_test"
+)
 
 func TestMain(m *testing.M) {
 	code := m.Run()

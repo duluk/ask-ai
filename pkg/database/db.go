@@ -76,7 +76,6 @@ func applySchema(db *sql.DB, dbTable string, schemaVersion int) error {
 	}
 
 	_, err = tx.Exec(getSchemaSQL(schemaVersion, dbTable))
-
 	if err != nil {
 		tx.Rollback()
 		return err

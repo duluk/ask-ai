@@ -1,12 +1,11 @@
 package logger
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
-
-	"log/slog"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
