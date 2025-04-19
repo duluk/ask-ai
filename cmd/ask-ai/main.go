@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -196,12 +197,35 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	spec := model
 	provider := opts.Provider
 	modelKey := spec
+	// Check for explicit provider in spec
 	if idx := strings.Index(spec, "/"); idx >= 0 {
 		provider = spec[:idx]
 		modelKey = spec[idx+1:]
 		opts.Provider = provider
 		// Use only the model key for recording
 		model = modelKey
+	} else {
+		// Infer provider from modelKey if unambiguous
+		var matches []string
+		for provName, prov := range opts.Config.Models {
+			// Direct model key match
+			if _, ok := prov.Models[modelKey]; ok {
+				matches = append(matches, provName)
+			} else {
+				// Alias match
+				for _, mConf := range prov.Models {
+					if slices.Contains(mConf.Aliases, modelKey) {
+						matches = append(matches, provName)
+					}
+				}
+			}
+		}
+		if len(matches) == 1 {
+			provider = matches[0]
+			opts.Provider = provider
+		} else if len(matches) > 1 {
+			panic(fmt.Sprintf("model %q is ambiguous across providers: %v", modelKey, matches))
+		}
 	}
 
 	modelConf, err := config.GetModelConfig(opts.Config, provider, modelKey)

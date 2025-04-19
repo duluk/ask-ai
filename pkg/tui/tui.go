@@ -428,12 +428,38 @@ func (m *Model) startStreaming() tea.Cmd {
 	spec := *m.clientArgs.Model
 	provider := m.opts.Provider
 	modelKey := spec
+	// Check for explicit provider in spec
 	if idx := strings.Index(spec, "/"); idx >= 0 {
 		provider = spec[:idx]
 		modelKey = spec[idx+1:]
 		m.opts.Provider = provider
 		// update clientArgs.Model to the pure model key for recording
 		*m.clientArgs.Model = modelKey
+	} else {
+		// Infer provider from modelKey if unambiguous
+		var matches []string
+		for provName, prov := range m.opts.Config.Models {
+			// Direct model key match
+			if _, ok := prov.Models[modelKey]; ok {
+				matches = append(matches, provName)
+			} else {
+				// Alias match
+				for _, mConf := range prov.Models {
+					for _, alias := range mConf.Aliases {
+						if alias == modelKey {
+							matches = append(matches, provName)
+							break
+						}
+					}
+				}
+			}
+		}
+		if len(matches) == 1 {
+			provider = matches[0]
+			m.opts.Provider = provider
+		} else if len(matches) > 1 {
+			panic(fmt.Sprintf("model %q is ambiguous across providers: %v", modelKey, matches))
+		}
 	}
 	// Load model configuration from config file
 	modelConf, err := config.GetModelConfig(m.opts.Config, provider, modelKey)
