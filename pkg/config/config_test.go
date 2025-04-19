@@ -269,3 +269,151 @@ model:
 	assert.Equal(t, "custom-model", opts.Model)
 	assert.Equal(t, 1234, opts.MaxTokens)
 }
+
+// Tests for role-specific model overrides and prompts
+func TestInitializeRoleModelPrompt(t *testing.T) {
+	tmpHome, err := os.MkdirTemp("", "ask-ai-test-home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpHome)
+	os.Setenv("HOME", tmpHome)
+	reset := func() {
+		pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
+		viper.Reset()
+	}
+	createConfig := func(t *testing.T, content string) string {
+		t.Helper()
+		tmpfile, err := os.CreateTemp("", "config*.yml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tmpfile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		if err := tmpfile.Close(); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Remove(tmpfile.Name()) })
+		return tmpfile.Name()
+	}
+
+	tests := []struct {
+		name     string
+		args     []string
+		config   string
+		validate func(*testing.T, *Options, error)
+	}{
+		{
+			name: "role with model override",
+			args: []string{"--role", "tester"},
+			config: `
+roles:
+  tester:
+    model: "custom-model"
+    description: "Tester role"
+    prompt:
+      - "Line1"
+      - "Line2"
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "custom-model", opts.Model)
+				assert.Equal(t, "Line1\nLine2", opts.SystemPrompt)
+				rc, ok := opts.Config.Roles["tester"]
+				assert.True(t, ok)
+				assert.Equal(t, "Tester role", rc.Description)
+				assert.Equal(t, "custom-model", rc.Model)
+				assert.Equal(t, []string{"Line1", "Line2"}, rc.Prompt)
+			},
+		},
+		{
+			name: "role without model override",
+			args: []string{"--role", "teacher"},
+			config: `
+roles:
+  teacher:
+    description: "Teacher role"
+    prompt: "Just one line"
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "ollama", opts.Model)
+				assert.Equal(t, "Just one line", opts.SystemPrompt)
+				rc, ok := opts.Config.Roles["teacher"]
+				assert.True(t, ok)
+				assert.Empty(t, rc.Model)
+				assert.Equal(t, []string{"Just one line"}, rc.Prompt)
+			},
+		},
+		{
+			name: "role model overridden by CLI model",
+			args: []string{"--role", "tester", "--model", "cli-model"},
+			config: `
+roles:
+  tester:
+    model: "custom-model"
+    prompt:
+      - "X"
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "cli-model", opts.Model)
+				assert.Equal(t, "X", opts.SystemPrompt)
+			},
+		},
+		{
+			name: "unknown role error",
+			args: []string{"--role", "unknown"},
+			config: `
+roles:
+  foo:
+    prompt: "hello"
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.Error(t, err)
+				assert.Nil(t, opts)
+				assert.Contains(t, err.Error(), "role \"unknown\" not found")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reset()
+			os.Args = append([]string{"test-program"}, tt.args...)
+			configPath := createConfig(t, tt.config)
+			os.Args = append(os.Args, "--config", configPath)
+			opts, err := Initialize()
+			tt.validate(t, opts, err)
+		})
+	}
+}
+
+// Tests for GetModelConfig function
+func TestGetModelConfig(t *testing.T) {
+	cfg := &Config{
+		Models: map[string]Provider{
+			"p1": {
+				Models: map[string]ModelConfig{
+					"m1": {Aliases: []string{"a1", "a2"}, ModelName: "m1", Temperature: 0.3, MaxTokens: 100},
+				},
+			},
+		},
+	}
+	// direct name
+	mc, err := GetModelConfig(cfg, "p1", "m1")
+	assert.NoError(t, err)
+	assert.Equal(t, "m1", mc.ModelName)
+	assert.Equal(t, float64(0.3), mc.Temperature)
+	// alias
+	mc2, err := GetModelConfig(cfg, "p1", "a2")
+	assert.NoError(t, err)
+	assert.Equal(t, mc, mc2)
+	// unknown model
+	_, err = GetModelConfig(cfg, "p1", "unknown")
+	assert.Error(t, err)
+	// unknown provider
+	_, err = GetModelConfig(cfg, "unknown", "m1")
+	assert.Error(t, err)
+}
