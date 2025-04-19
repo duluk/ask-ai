@@ -77,4 +77,3 @@ func TestUpdateWindowSize(t *testing.T) {
 	assert.Equal(t, expHeight, m2.viewport.Height)
 	assert.Equal(t, expWidth, m2.textInput.Width)
 }
-
