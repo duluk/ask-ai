@@ -55,6 +55,7 @@ func main() {
 		fmt.Println("Error initializing logger: ", err)
 		os.Exit(1)
 	}
+	logger.Info("Initialized config", "opts", opts)
 
 	// If DB exists, just opens it; otherwise, creates it first
 	db, err := database.InitializeDB(opts.DBFileName, opts.DBTable)
@@ -100,6 +101,7 @@ func main() {
 			model = promptContext[len(promptContext)-1].Model
 		}
 	}
+	logger.Info("Conversation ID", "convID", convID)
 
 	clientArgs := LLM.ClientArgs{
 		Model:        &model,
@@ -115,6 +117,7 @@ func main() {
 	if opts.UseTUI {
 		// Ensure we don't output directly to terminal when in TUI mode
 		opts.NoOutput = true
+		logger.Info("Starting TUI")
 		err = tui.Run(opts, clientArgs, db)
 		if err != nil {
 			fmt.Println("Error running TUI: ", err)
@@ -213,6 +216,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	args.Temperature = &apiTemp
 	apiMax := modelConf.MaxTokens
 	args.MaxTokens = &apiMax
+	logger.Info("Using model", "provider", provider, "model", model, "temperature", apiTemp, "maxTokens", apiMax)
 
 	var client LLM.Client
 
