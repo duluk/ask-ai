@@ -76,6 +76,7 @@ type ClientArgs struct {
 	SystemPrompt  *string
 	Context       []LLMConversations
 	MaxTokens     *int
+	Thinking      *string
 	Temperature   *float32
 	Log           *os.File
 	ConvID        *int

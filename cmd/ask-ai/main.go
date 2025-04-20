@@ -110,6 +110,7 @@ func main() {
 		Context:      promptContext,
 		MaxTokens:    &opts.MaxTokens,
 		Temperature:  &opts.Temperature,
+		Thinking:     &opts.Thinking,
 		// Log:          log_fd,
 	}
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	// "golang.org/x/term"
@@ -29,6 +30,7 @@ type ModelConfig struct {
 	ModelName   string   `mapstructure:"model_name"`
 	Temperature float64  `mapstructure:"temperature"`
 	MaxTokens   int      `mapstructure:"max_tokens"`
+	Thinking    string   `mapstructure:"thinking"`
 }
 
 // RoleConfig holds configuration for a specific role
@@ -96,6 +98,7 @@ type Options struct {
 	ShowAPIKeys    bool
 	Model          string
 	Provider       string
+	Thinking       string
 	Temperature    float32 // model temperature
 	MaxTokens      int     // max tokens for response
 	ContextLength  int     // context window length
@@ -166,6 +169,7 @@ func Initialize() (*Options, error) {
 	pflag.Float64P("temperature", "t", 0.7, "Temperature for model responses")
 	// Maximum tokens for a single response (default 512)
 	pflag.IntP("max-tokens", "M", 512, "Maximum tokens for response")
+	pflag.StringP("thinking-effort", "e", "medium", "Reasoning effort for model responses")
 	pflag.BoolP("continue", "c", false, "Continue last conversation")
 	pflag.IntP("id", "i", 0, "Conversation ID to continue")
 	pflag.BoolP("tui", "T", false, "Use TUI interface")
@@ -300,6 +304,15 @@ func Initialize() (*Options, error) {
 		opts.MaxTokens = viper.GetInt("max-tokens")
 	}
 
+	// Thiking Effort: CLI flag > old-style config block > new-style defaults > flag default
+	if modelConf != nil && modelConf.IsSet("thinking") {
+		opts.Thinking = modelConf.GetString("thinking")
+	} else if th := viper.GetString("defaults.thinking"); th != "" {
+		opts.Thinking = th
+	} else {
+		opts.Thinking = viper.GetString("thinking")
+	}
+
 	// ContextLength: CLI flag > old-style config block > new-style defaults > flag default
 	if modelConf != nil && modelConf.IsSet("context_length") {
 		opts.ContextLength = modelConf.GetInt("context_length")
@@ -351,14 +364,18 @@ func Initialize() (*Options, error) {
 	opts.DBFileName = os.ExpandEnv(viper.GetString("database.file"))
 	opts.DBTable = viper.GetString("database.table")
 
-	return opts, nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
+	// Validations
+	for _, provider := range config.Models {
+		for modelName, modelConfig := range provider.Models {
+			if modelConfig.Thinking != "" {
+				if err := validateThinking(modelConfig.Thinking); err != nil {
+					return nil, fmt.Errorf("model %s: %w", modelName, err)
+				}
+			}
+		}
 	}
-	return b
+
+	return opts, nil
 }
 
 // GetModelConfig returns the configuration for a specific model
@@ -375,10 +392,8 @@ func GetModelConfig(config *Config, provider, model string) (*ModelConfig, error
 
 	// Check aliases
 	for _, m := range p.Models {
-		for _, alias := range m.Aliases {
-			if alias == model {
-				return &m, nil
-			}
+		if slices.Contains(m.Aliases, model) {
+			return &m, nil
 		}
 	}
 
@@ -427,6 +442,14 @@ func searchForConversation(search string) {
 	fmt.Println()
 
 	os.Exit(0)
+}
+
+func validateThinking(thinking string) error {
+	allowedValues := []string{"low", "medium", "high"}
+	if slices.Contains(allowedValues, thinking) {
+		return nil
+	}
+	return fmt.Errorf("invalid Thinking value: %s", thinking)
 }
 
 func determineScreenSize() (int, int) {

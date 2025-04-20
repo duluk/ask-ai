@@ -7,6 +7,7 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/shared"
 )
 
 func NewOpenAI(apiLLC string, apiURL string) *OpenAI {
@@ -81,8 +82,9 @@ func (cs *OpenAI) ChatStream(args ClientArgs, termWidth int, tabWidth int, strea
 			StreamOptions: openai.ChatCompletionStreamOptionsParam{
 				IncludeUsage: openai.Bool(true),
 			},
-			TopP: openai.Float(1.0), // Controls diversity via nucleus sampling
-			N:    openai.Int(1),     // Number of completions to generate
+			ReasoningEffort: shared.ReasoningEffort(*args.Thinking),
+			TopP:            openai.Float(1.0), // Controls diversity via nucleus sampling
+			N:               openai.Int(1),     // Number of completions to generate
 			// These are not correct but possible I think:
 			// ResponseFormat:   openai.ChatResponseFormatDefault, // Format of the response
 			// Stop:             openai.String("\n"),              // Stop completion at this token
