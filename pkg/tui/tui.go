@@ -175,9 +175,15 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	// Calculate initial content width, accounting for viewport padding and borders
 	contentWidth := opts.ScreenTextWidth - contentMargin
 
+	// Create a viewport for chat history and pre-populate with a welcome message
 	vp := viewport.New(contentWidth, viewportHeight)
-	vp.SetContent("")
-	vp.YPosition = 0 // Bubble Tea/Lipgloss will adjust for the border
+	// Welcome text shown on startup
+	welcome := "Welcome to ask-ai!\n\n" +
+		"Type your question below and press Enter.\n" +
+		"Use /help for commands. Press Ctrl+C to exit.\n\n"
+	// Style and set the welcome content
+	vp.SetContent(lipgloss.NewStyle().Width(contentWidth).Render(welcome))
+	vp.YPosition = 0
 
 	// Wrap it up
 	lw := linewrap.NewLineWrapper(contentWidth, opts.TabWidth, linewrap.NilWriter)
@@ -185,7 +191,7 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	return Model{
 		viewport:     vp,
 		textInput:    ti,
-		content:      "",
+		content:      welcome,
 		opts:         opts,
 		clientArgs:   clientArgs,
 		db:           db,
