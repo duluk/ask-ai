@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -341,13 +342,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.Type {
 			case tea.KeyPgUp:
-				m.viewport.LineUp(m.viewport.Height)
+				m.viewport.ScrollUp(m.viewport.Height)
 			case tea.KeyPgDown:
-				m.viewport.LineDown(m.viewport.Height)
+				m.viewport.ScrollDown(m.viewport.Height)
 			case tea.KeyUp:
-				m.viewport.LineUp(1)
+				m.viewport.ScrollUp(1)
 			case tea.KeyDown:
-				m.viewport.LineDown(1)
+				m.viewport.ScrollDown(1)
 			}
 		case tea.MouseMsg:
 			m.viewport, cmd = m.viewport.Update(msg)
@@ -380,26 +381,92 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 
-	// NOTE: this accounts for issues with the right border not appearing; for
-	// whatever reason, I have to reduce the width by 2 (which happens to be
-	// the same as 'contentPadding', so I'm going to use that and see if anything
-	// changes, they stay related)
+	// Compute available width for components
 	contentWidth := m.windowWidth - contentPadding
 
-	viewportBox := viewportStyle.
-		Width(contentWidth).
-		Height(m.viewport.Height).
-		Render(m.viewport.View())
+	// Render the input box early to measure its dynamic height
+	var inputBox string
+	var inputLines int
+	raw := m.textInput.Value()
+	if raw == "" {
+		// No user input: show default prompt/placeholder view
+		inputContent := m.textInput.View()
+		inputBox = inputStyle.Width(contentWidth).Render(inputContent)
+		inputLines = strings.Count(inputBox, "\n") + 1
+	} else {
+		// Wrap raw input into lines with prompt indent and insert blinking cursor
+		prompt := m.textInput.Prompt
+		promptLen := len([]rune(prompt))
+		// Available width inside input (excluding borders and padding)
+		innerContentWidth := contentWidth - contentMargin
+		// Max width for raw text segments per line after prompt/indent
+		maxRawWidth := innerContentWidth - promptLen
+		maxRawWidth = max(1, maxRawWidth)
+		// Prepare raw runes and cursor position
+		rawRunes := []rune(raw)
+		cursorPos := m.textInput.Position()
+		// Wrap raw input into segments
+		lw := linewrap.NewLineWrapper(maxRawWidth, m.opts.TabWidth, linewrap.NilWriter)
+		wrapped := lw.Wrap([]byte(raw))
+		parts := strings.Split(wrapped, "\n")
+		indent := strings.Repeat(" ", promptLen)
+		var b strings.Builder
+		// Build each line, inserting prompt/indent and cursor
+		processed := 0
+		for i, part := range parts {
+			// Add prompt or indent
+			if i == 0 {
+				b.WriteString(prompt)
+			} else {
+				b.WriteRune('\n')
+				b.WriteString(indent)
+			}
+			partRunes := []rune(part)
+			// Does this line contain the cursor?
+			if cursorPos >= processed && cursorPos <= processed+len(partRunes) {
+				// Offset of cursor within this part
+				idx := cursorPos - processed
+				// Text before cursor
+				b.WriteString(string(partRunes[:idx]))
+				// Character under cursor or space at end
+				var ch string
+				if cursorPos < len(rawRunes) {
+					ch = string(rawRunes[cursorPos])
+				} else {
+					ch = " "
+				}
+				m.textInput.Cursor.SetChar(ch)
+				// Blinking cursor
+				b.WriteString(m.textInput.Cursor.View())
+				// Text after cursor (skip char under cursor)
+				if cursorPos < len(rawRunes) && idx < len(partRunes) {
+					b.WriteString(string(partRunes[idx+1:]))
+				}
+			} else {
+				// No cursor on this line
+				b.WriteString(part)
+			}
+			processed += len(partRunes)
+		}
+		inputContent := b.String()
+		inputBox = inputStyle.Width(contentWidth).Render(inputContent)
+		inputLines = strings.Count(inputBox, "\n") + 1
+	}
 
-	statusLine := statusStyle.
-		Width(contentWidth).
-		Padding(0, 1).
-		Render(m.statusMsg)
+	// Calculate viewport height based on dynamic input box size
+	totalFixed := inputLines + statusHeight + borderHeight + contentPadding + testPadding
+	vpHeight := m.windowHeight - totalFixed
+	vpHeight = max(vpHeight, 0)
 
-	inputBox := inputStyle.
-		Width(contentWidth).
-		Render(m.textInput.View())
+	// Use a copy of the viewport model to render with updated height
+	vp := m.viewport
+	vp.Height = vpHeight
 
+	viewportBox := viewportStyle.Width(contentWidth).Height(vpHeight).Render(vp.View())
+
+	statusLine := statusStyle.Width(contentWidth).Padding(0, 1).Render(m.statusMsg)
+
+	// Assemble the final view
 	return lipgloss.JoinVertical(lipgloss.Center,
 		viewportBox,
 		statusLine,
@@ -445,11 +512,8 @@ func (m *Model) startStreaming() tea.Cmd {
 			} else {
 				// Alias match
 				for _, mConf := range prov.Models {
-					for _, alias := range mConf.Aliases {
-						if alias == modelKey {
-							matches = append(matches, provName)
-							break
-						}
+					if slices.Contains(mConf.Aliases, modelKey) {
+						matches = append(matches, provName)
 					}
 				}
 			}
