@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -636,6 +637,7 @@ Available commands:
   /clear       - Clear the conversation history
   /new, /reset - Start a new conversation (clear context and new conversation ID)
   /context     - Show the current context
+  /models      - List available models
 `
 		m.content += helpText + "\n"
 		m.viewport.SetContent(m.content)
@@ -683,6 +685,37 @@ Available commands:
 			m.content += "\n"
 		}
 		// Deal with Charm's wrapping problems
+		m.updateViewportContent()
+		m.textInput.SetValue("")
+	case "/models":
+		// List available models
+		m.content += "Available models:\n"
+		// Collect provider names
+		provNames := make([]string, 0, len(m.opts.Config.Models))
+		for prov := range m.opts.Config.Models {
+			provNames = append(provNames, prov)
+		}
+		sort.Strings(provNames)
+		for _, prov := range provNames {
+			m.content += fmt.Sprintf("%s:\n", prov)
+			// Collect model keys for this provider
+			modelNames := make([]string, 0, len(m.opts.Config.Models[prov].Models))
+			for modelName := range m.opts.Config.Models[prov].Models {
+				modelNames = append(modelNames, modelName)
+			}
+			sort.Strings(modelNames)
+			for _, modelKey := range modelNames {
+				// Fetch model configuration to list aliases
+				cfg := m.opts.Config.Models[prov].Models[modelKey]
+				if len(cfg.Aliases) > 0 {
+					// Display model key with aliases in parentheses
+					m.content += fmt.Sprintf("  %s (%s)\n", modelKey, strings.Join(cfg.Aliases, ", "))
+				} else {
+					m.content += fmt.Sprintf("  %s\n", modelKey)
+				}
+			}
+		}
+		m.content += "\n"
 		m.updateViewportContent()
 		m.textInput.SetValue("")
 
