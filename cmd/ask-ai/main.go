@@ -151,6 +151,7 @@ func main() {
 				switch cmd {
 				case "/help", "/?":
 					fmt.Println("Special commands:")
+					fmt.Println("  /new: Start a new conversation (clear context and new conversation ID)")
 					fmt.Println("  /exit: Exit the program")
 					fmt.Println("  /context: Show the current context")
 					fmt.Println("  /model <model>: Show the current model")
@@ -170,6 +171,18 @@ func main() {
 					continue
 				case "/id":
 					fmt.Println("Conversation ID: ", *clientArgs.ConvID)
+					continue
+				case "/new", "/reset":
+					// Start a new conversation: clear context and allocate a new conversation ID
+					lastID, err := db.GetLastConversationID()
+					if err != nil {
+						fmt.Println("Error getting last conversation ID:", err)
+					}
+					convID = lastID + 1
+					clientArgs.ConvID = &convID
+					promptContext = nil
+					clientArgs.Context = promptContext
+					fmt.Println("Started new conversation. New conversation ID:", convID)
 					continue
 				}
 			}

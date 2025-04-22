@@ -634,6 +634,7 @@ Available commands:
   /model NAME  - Change model to NAME
   /id          - Show conversation ID
   /clear       - Clear the conversation history
+  /new, /reset - Start a new conversation (clear context and new conversation ID)
   /context     - Show the current context
 `
 		m.content += helpText + "\n"
@@ -683,6 +684,22 @@ Available commands:
 		}
 		// Deal with Charm's wrapping problems
 		m.updateViewportContent()
+		m.textInput.SetValue("")
+
+	case "/new", "/reset":
+		// Start a new conversation: clear context and allocate a new conversation ID
+		lastID, err := m.db.GetLastConversationID()
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("Error getting last conversation ID: %v", err)
+		} else {
+			newID := lastID + 1
+			*m.clientArgs.ConvID = newID
+			m.clientArgs.Context = nil
+			m.fullResponse = ""
+			m.content = ""
+			m.viewport.SetContent(m.content)
+			m.statusMsg = fmt.Sprintf("Started new conversation. ConvID: %d", newID)
+		}
 		m.textInput.SetValue("")
 
 	default:
