@@ -113,10 +113,10 @@ type Options struct {
 	ContinueChat   bool
 	ConversationID int
 
-  SearchKeyword     string // Keyword for searching previous conversations
+	SearchKeyword     string // Keyword for searching previous conversations
 	ListConversations bool   // Flag to list all conversations interactively
 
-  // Terminal dimensions and tab width for TUI or dumping
+	// Terminal dimensions and tab width for TUI or dumping
 	ScreenWidth     int // total terminal width
 	ScreenTextWidth int // usable text width (terminal width minus pad, capped)
 	ScreenHeight    int // total terminal height

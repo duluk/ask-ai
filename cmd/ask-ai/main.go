@@ -65,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-  
+
 	if opts.ListConversations {
 		selectedID, err := tui.RunList(opts, db)
 		if err != nil {
