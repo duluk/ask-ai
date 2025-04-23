@@ -112,6 +112,7 @@ type Options struct {
 	Quiet          bool
 	ContinueChat   bool
 	ConversationID int
+	ListConversations bool   // Flag to list all conversations interactively
 	// Terminal dimensions and tab width for TUI or dumping
 	ScreenWidth     int // total terminal width
 	ScreenTextWidth int // usable text width (terminal width minus pad, capped)
@@ -172,6 +173,8 @@ func Initialize() (*Options, error) {
 	pflag.StringP("thinking-effort", "e", "medium", "Reasoning effort for model responses")
 	pflag.BoolP("continue", "c", false, "Continue last conversation")
 	pflag.IntP("id", "i", 0, "Conversation ID to continue")
+	// List all conversations interactively
+	pflag.BoolP("list", "l", false, "List all conversations interactively")
 	pflag.BoolP("tui", "T", false, "Use TUI interface")
 	pflag.BoolP("no-output", "n", false, "Disable direct terminal output")
 	pflag.BoolP("quiet", "q", false, "Suppress non-essential output")
@@ -273,6 +276,7 @@ func Initialize() (*Options, error) {
 	opts.Quiet = viper.GetBool("quiet")
 	opts.ContinueChat = viper.GetBool("continue")
 	opts.ConversationID = viper.GetInt("id")
+	opts.ListConversations = viper.GetBool("list")
 	// Terminal size and tab width
 	opts.ScreenWidth = width
 	opts.ScreenTextWidth = textWidth
