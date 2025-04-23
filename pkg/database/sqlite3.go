@@ -141,29 +141,26 @@ func (sqlDB *ChatDB) GetLastConversationID() (int, error) {
 // response at the minimum can be returned. But may want prompt too. May want
 // everything.
 func (sqlDB *ChatDB) SearchForConversation(keyword string) ([]int, error) {
+	// Search both prompt and response for the keyword, return distinct conversation IDs
 	rows, err := sqlDB.db.Query(`
-		SELECT conv_id FROM `+sqlDB.dbTable+` WHERE response LIKE ?;
-	`, "%"+keyword+"%")
+       SELECT DISTINCT conv_id FROM `+sqlDB.dbTable+` WHERE prompt LIKE ? OR response LIKE ?;
+   `, "%"+keyword+"%", "%"+keyword+"%")
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
 	defer rows.Close()
 
-	var responses []int
+	var convIDs []int
 	for rows.Next() {
-		var response *int
-		err := rows.Scan(&response)
-		if err != nil {
+		var id sql.NullInt64
+		if err := rows.Scan(&id); err != nil {
 			return nil, fmt.Errorf("%v", err)
 		}
-		// If response happens to be NULL (conv_id isn't set), it's fine to
-		// just skip it
-		if response != nil {
-			responses = append(responses, *response)
+		if id.Valid {
+			convIDs = append(convIDs, int(id.Int64))
 		}
 	}
-
-	return responses, nil
+	return convIDs, nil
 }
 
 func (sqlDB *ChatDB) GetModel(convID int) (string, error) {
