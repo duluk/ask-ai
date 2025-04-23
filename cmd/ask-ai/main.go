@@ -65,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	// If list flag provided, launch interactive listing of conversations
+  
 	if opts.ListConversations {
 		selectedID, err := tui.RunList(opts, db)
 		if err != nil {
@@ -79,7 +79,7 @@ func main() {
 		db.ShowConversation(selectedID)
 		return
 	}
-	// If search flag provided, launch interactive selection
+
 	if opts.SearchKeyword != "" {
 		selectedID, err := tui.RunSearch(opts, db)
 		if err != nil {
