@@ -65,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	// If list flag provided, launch interactive listing of conversations
+  
 	if opts.ListConversations {
 		selectedID, err := tui.RunList(opts, db)
 		if err != nil {
@@ -74,6 +74,20 @@ func main() {
 		}
 		if selectedID == 0 {
 			fmt.Println("No conversations found")
+			os.Exit(0)
+		}
+		db.ShowConversation(selectedID)
+		return
+	}
+
+	if opts.SearchKeyword != "" {
+		selectedID, err := tui.RunSearch(opts, db)
+		if err != nil {
+			fmt.Println("Error searching conversations:", err)
+			os.Exit(1)
+		}
+		if selectedID == 0 {
+			fmt.Printf("No conversations found matching %q\n", opts.SearchKeyword)
 			os.Exit(0)
 		}
 		db.ShowConversation(selectedID)
