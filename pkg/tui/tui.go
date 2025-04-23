@@ -752,7 +752,6 @@ func Run(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) e
 	p := tea.NewProgram(
 		m,
 		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(), // Enable mouse support
 		// tea.WithInputTTY(),         // Enable input from TTY
 		// tea.WithOutput(os.Stderr),  // Redirect output to stderr
 		// tea.WithInput(os.Stdin),    // Redirect input from stdin
