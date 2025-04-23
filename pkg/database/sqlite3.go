@@ -137,6 +137,29 @@ func (sqlDB *ChatDB) GetLastConversationID() (int, error) {
 	return int(maxID.Int64), nil
 }
 
+// ListConversationIDs returns all distinct conversation IDs, sorted ascending
+func (sqlDB *ChatDB) ListConversationIDs() ([]int, error) {
+	rows, err := sqlDB.db.Query(
+		`SELECT DISTINCT conv_id FROM ` + sqlDB.dbTable + ` ORDER BY conv_id;`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%v", err)
+	}
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id sql.NullInt64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("%v", err)
+		}
+		if id.Valid {
+			ids = append(ids, int(id.Int64))
+		}
+	}
+	return ids, nil
+}
+
 // TODO: probably want a different return structure, so that the ID and
 // response at the minimum can be returned. But may want prompt too. May want
 // everything.
