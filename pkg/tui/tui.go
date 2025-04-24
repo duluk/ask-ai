@@ -100,8 +100,10 @@ var (
 // Model represents the TUI state (this has nothing to do with LLMs)
 type Model struct {
 	viewport     viewport.Model
+	viewport2    viewport.Model
 	textInput    textinput.Model
 	content      string
+	content2     string
 	opts         *config.Options
 	clientArgs   LLM.ClientArgs
 	db           *database.ChatDB
@@ -113,6 +115,10 @@ type Model struct {
 	streamChan   <-chan LLM.StreamResponse
 	fullResponse string
 	lineWrapper  *linewrap.LineWrapper
+	// list browsing mode
+	browsingList bool
+	listIDs      []int
+	listCursor   int
 }
 
 func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) Model {
@@ -189,10 +195,18 @@ func Initialize(opts *config.Options, clientArgs LLM.ClientArgs, db *database.Ch
 	// Wrap it up
 	lw := linewrap.NewLineWrapper(contentWidth, opts.TabWidth, linewrap.NilWriter)
 
+	// Secondary viewport placeholder
+	vp2 := viewport.New(contentWidth, viewportHeight)
+	welcome2 := "Secondary viewport pane\n\n"
+	vp2.SetContent(lipgloss.NewStyle().Width(contentWidth).Render(welcome2))
+	vp2.YPosition = 0
+
 	return Model{
 		viewport:     vp,
+		viewport2:    vp2,
 		textInput:    ti,
 		content:      welcome,
+		content2:     welcome2,
 		opts:         opts,
 		clientArgs:   clientArgs,
 		db:           db,
@@ -215,6 +229,96 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// If in list browsing mode, handle navigation and selection
+	if m.browsingList {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyUp:
+				if m.listCursor > 0 {
+					m.listCursor--
+				}
+				return m, nil
+			case tea.KeyDown:
+				if m.listCursor < len(m.listIDs)-1 {
+					m.listCursor++
+				}
+				return m, nil
+			case tea.KeyRunes:
+				switch msg.String() {
+				case "k":
+					if m.listCursor > 0 {
+						m.listCursor--
+					}
+					return m, nil
+				case "j":
+					if m.listCursor < len(m.listIDs)-1 {
+						m.listCursor++
+					}
+					return m, nil
+				case "h":
+					// Page up
+					page := m.viewport.Height
+					m.listCursor -= page
+					if m.listCursor < 0 {
+						m.listCursor = 0
+					}
+					return m, nil
+				case "l":
+					// Page down
+					page := m.viewport.Height
+					m.listCursor += page
+					if m.listCursor >= len(m.listIDs) {
+						m.listCursor = len(m.listIDs) - 1
+					}
+					return m, nil
+				}
+			case tea.KeyEnter:
+				// Load selected conversation
+				sel := m.listIDs[m.listCursor]
+				convs, err := m.db.LoadConversationFromDB(sel)
+				if err != nil {
+					m.statusMsg = fmt.Sprintf("Error loading conversation: %v", err)
+				} else {
+					var sb strings.Builder
+					for _, conv := range convs {
+						switch conv.Role {
+						case "user":
+							sb.WriteString(userStyle.Render("User: "))
+							sb.WriteString(conv.Content)
+							sb.WriteString("\n\n")
+						case "assistant":
+							sb.WriteString(assistantStyle.Render("Assistant: "))
+							sb.WriteString(conv.Content)
+							sb.WriteString("\n\n")
+						default:
+							sb.WriteString(conv.Content + "\n\n")
+						}
+					}
+					m.content = sb.String()
+					m.clientArgs.ConvID = &sel
+					m.opts.ContinueChat = true
+					m.clientArgs.Context = convs
+					m.updateViewportContent()
+					m.statusMsg = fmt.Sprintf("Model: %s | ConvID: %d | /help: Commands", *m.clientArgs.Model, *m.clientArgs.ConvID)
+				}
+				// Exit browsing mode
+				m.browsingList = false
+				m.listIDs = nil
+				m.listCursor = 0
+				m.textInput.SetValue("")
+				return m, nil
+			case tea.KeyEsc, tea.KeyCtrlC:
+				// Cancel browsing
+				m.browsingList = false
+				m.listIDs = nil
+				m.listCursor = 0
+				m.textInput.SetValue("")
+				return m, nil
+			}
+		}
+		return m, nil
+	}
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -264,28 +368,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.windowWidth = msg.Width
 		m.windowHeight = msg.Height
 
-		// NOTE: This affects the viewport height/top border
-		// Use consistent height calculations across the application
+		// Recalculate fixed sizes
 		totalFixedHeight := inputHeight + statusHeight + borderHeight + contentPadding + testPadding
-		// TODO: this can possible be removed as we figured out the scrolling issue
-		// Add a small buffer to prevent content from being hidden
 		viewportHeight := m.windowHeight - totalFixedHeight
 		viewportWidth := m.windowWidth - contentMargin
 
+		// Update line wrapper width
 		textWidth := min(viewportWidth, m.opts.ScreenTextWidth)
 		m.lineWrapper.SetMaxWidth(textWidth)
 
+		// Resize viewports and input
 		m.viewport.Height = viewportHeight
 		m.viewport.Width = viewportWidth
+		m.viewport2.Height = viewportHeight
+		m.viewport2.Width = viewportWidth
 		m.textInput.Width = viewportWidth
 
+		// Mark ready after first resize
 		if !m.ready {
 			m.ready = true
-		} else {
-			// Re-wrap and set content on resize after initial setup (this is
-			// to deal with Charm's wrapping problems)
-			m.updateViewportContent()
 		}
+
+		// Wrap main content into viewport
+		m.updateViewportContent()
+
+		// Wrap secondary content or list into viewport2
+		var sec string
+		if m.browsingList {
+			sec = m.renderListView(viewportHeight)
+		} else {
+			sec = m.content2
+		}
+		wrapped2 := lipgloss.NewStyle().Width(viewportWidth).Render(sec)
+		m.viewport2.SetContent(wrapped2)
+		m.viewport2.YPosition = 0
 
 		return m, nil
 
@@ -388,18 +504,16 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 
-	// Compute available width for components
-	contentWidth := m.windowWidth - contentPadding
+	// Compute available width for components (accounting for borders + padding)
+	contentWidth := m.windowWidth - contentMargin
 
-	// Render the input box early to measure its dynamic height
+	// Render the input box early (fixed height)
 	var inputBox string
-	var inputLines int
 	raw := m.textInput.Value()
 	if raw == "" {
 		// No user input: show default prompt/placeholder view
 		inputContent := m.textInput.View()
 		inputBox = inputStyle.Width(contentWidth).Render(inputContent)
-		inputLines = strings.Count(inputBox, "\n") + 1
 	} else {
 		// Wrap raw input into lines with prompt indent and insert blinking cursor
 		prompt := m.textInput.Prompt
@@ -457,25 +571,48 @@ func (m Model) View() string {
 		}
 		inputContent := b.String()
 		inputBox = inputStyle.Width(contentWidth).Render(inputContent)
-		inputLines = strings.Count(inputBox, "\n") + 1
 	}
 
-	// Calculate viewport height based on dynamic input box size
-	totalFixed := inputLines + statusHeight + borderHeight + contentPadding + testPadding
-	vpHeight := m.windowHeight - totalFixed
-	vpHeight = max(vpHeight, 0)
+	// Calculate style block height for viewports (border + padding + content)
+	styleHeight := m.windowHeight - (inputHeight + statusHeight)
+	if styleHeight < borderHeight+contentPadding+testPadding {
+		styleHeight = borderHeight + contentPadding + testPadding
+	}
+	// Compute inner content height (excluding border and padding)
+	contentHeight := styleHeight - (borderHeight + contentPadding + testPadding)
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
 
-	// Use a copy of the viewport model to render with updated height
-	vp := m.viewport
-	vp.Height = vpHeight
+	// Left and right viewports split
+	paneWidth := contentWidth / 2
 
-	viewportBox := viewportStyle.Width(contentWidth).Height(vpHeight).Render(vp.View())
+	// Left pane: chat history
+	// Left pane: chat history
+	vpLeft := m.viewport
+	vpLeft.Height = contentHeight
+	leftBox := viewportStyle.Width(paneWidth).Height(styleHeight).Render(vpLeft.View())
+
+	// Right pane: either list browser or secondary content
+	var rightBox string
+	if m.browsingList {
+		// Render paginated conversation list with snippets
+		listView := m.renderListView(contentHeight)
+		rightBox = viewportStyle.Width(paneWidth).Height(styleHeight).Render(listView)
+	} else {
+		// Secondary viewport pane
+		vpRight := m.viewport2
+		vpRight.Height = contentHeight
+		rightBox = viewportStyle.Width(paneWidth).Height(styleHeight).Render(vpRight.View())
+	}
+
+	viewportsRow := lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox)
 
 	statusLine := statusStyle.Width(contentWidth).Padding(0, 1).Render(m.statusMsg)
 
-	// Assemble the final view
-	return lipgloss.JoinVertical(lipgloss.Center,
-		viewportBox,
+	// Assemble the final view with split screen, aligned at the top
+	return lipgloss.JoinVertical(lipgloss.Top,
+		viewportsRow,
 		statusLine,
 		inputBox,
 	)
@@ -719,6 +856,20 @@ Available commands:
 		m.updateViewportContent()
 		m.textInput.SetValue("")
 
+	case "/list":
+		// Enter list browsing mode: show conversation IDs in right pane
+		ids, err := m.db.ListConversationIDs()
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("Error listing conversations: %v", err)
+		} else {
+			m.browsingList = true
+			m.listIDs = ids
+			m.listCursor = 0
+			m.statusMsg = "Browse conversations: ↑/↓ to navigate, Enter to select, Esc to cancel"
+		}
+		m.textInput.SetValue("")
+		return m, nil
+
 	case "/new", "/reset":
 		// Start a new conversation: clear context and allocate a new conversation ID
 		lastID, err := m.db.GetLastConversationID()
@@ -743,6 +894,52 @@ Available commands:
 	}
 
 	return m, nil
+}
+
+// renderListView returns a paginated list of conversation IDs with snippets
+func (m Model) renderListView(vpHeight int) string {
+	total := len(m.listIDs)
+	if total == 0 {
+		return ""
+	}
+	// Determine number of visible items
+	n := vpHeight
+	if total < n {
+		n = total
+	}
+	// Calculate window start index centered on cursor
+	start := m.listCursor - n/2
+	if start < 0 {
+		start = 0
+	} else if start+n > total {
+		start = total - n
+	}
+	end := start + n
+	var b strings.Builder
+	for i := start; i < end; i++ {
+		id := m.listIDs[i]
+		// Cursor prefix
+		if i == m.listCursor {
+			b.WriteString("> ")
+		} else {
+			b.WriteString("  ")
+		}
+		// Title: zero-padded ID
+		title := fmt.Sprintf("%04d", id)
+		b.WriteString(title)
+		b.WriteString(" – ")
+		// Snippet: first user prompt of the conversation
+		convs, err := m.db.LoadConversationFromDB(id)
+		if err == nil && len(convs) > 0 {
+			desc := convs[0].Content
+			if len(desc) > 50 {
+				desc = desc[:47] + "..."
+			}
+			b.WriteString(desc)
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
 }
 
 func Run(opts *config.Options, clientArgs LLM.ClientArgs, db *database.ChatDB) error {
