@@ -393,7 +393,7 @@ func GetModelConfig(config *Config, provider, model string) (*ModelConfig, error
 		return nil, fmt.Errorf("provider %s not found", provider)
 	}
 
-	// Check direct model name
+	// Check direct model key
 	if m, ok := p.Models[model]; ok {
 		return &m, nil
 	}
@@ -401,6 +401,13 @@ func GetModelConfig(config *Config, provider, model string) (*ModelConfig, error
 	// Check aliases
 	for _, m := range p.Models {
 		if slices.Contains(m.Aliases, model) {
+			return &m, nil
+		}
+	}
+
+	// Check API model name
+	for _, m := range p.Models {
+		if m.ModelName == model {
 			return &m, nil
 		}
 	}
