@@ -46,6 +46,21 @@ chatgpt> What is the best chess opening for a checkers player?
 $ bin/ask-ai --model gemini "Why do you pull in so many modules for th Go API?"
 ```
 
+* Search the web for current context before asking any configured model. Set a
+  [Brave Search API](https://brave.com/search/api/) key in `BRAVE_SEARCH_API_KEY`
+  (or `web.api_key` in the configuration), then use `--web` (the default is five
+  results):
+```bash
+$ BRAVE_SEARCH_API_KEY=... bin/ask-ai --web "What changed in Go this week?"
+```
+  Use `--web-results N` to include 1–20 sources. Results are added to the
+  request as untrusted reference text; ask-ai stores only your original prompt.
+  Use `--web=auto` to let the model first decide whether current web context is
+  necessary; it will search only when it is useful.
+  To make this the default, set `web.mode: auto` in the configuration file.
+  Like provider API keys, `web.api_key` may be a command such as
+  `op read op://vault/brave/api-key`; its output is used as the key.
+
 * Continue the conversation
 ```bash
 $ bin/ask-ai --model grok "When is your knowledge cut-off?"

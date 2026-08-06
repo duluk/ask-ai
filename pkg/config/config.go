@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/duluk/ask-ai/pkg/apikey"
 	"github.com/duluk/ask-ai/pkg/database"
 )
 
@@ -115,6 +116,9 @@ type Options struct {
 
 	SearchKeyword     string // Keyword for searching previous conversations
 	ListConversations bool   // Flag to list all conversations interactively
+	WebMode           string // off, always, or auto
+	WebResults        int    // Maximum number of web results to include
+	WebSearchAPIKey   string // Brave Search API key, from environment or configuration
 
 	// Terminal dimensions and tab width for TUI or dumping
 	ScreenWidth     int // total terminal width
@@ -124,6 +128,29 @@ type Options struct {
 	// Loaded full configuration, including providers and models
 	Config *Config
 }
+
+type webModeValue string
+
+func (v *webModeValue) String() string { return string(*v) }
+
+func (v *webModeValue) Type() string { return "web-mode" }
+
+func (v *webModeValue) Set(value string) error {
+	switch value {
+	case "true", "always":
+		*v = "always"
+	case "false", "off":
+		*v = "off"
+	case "auto":
+		*v = "auto"
+	default:
+		return fmt.Errorf("must be one of auto, always, or off")
+	}
+	return nil
+}
+
+// IsBoolFlag lets --web retain its original, argument-free behavior.
+func (v *webModeValue) IsBoolFlag() bool { return true }
 
 const Version = "0.3.3"
 
@@ -178,6 +205,10 @@ func Initialize() (*Options, error) {
 	pflag.IntP("id", "i", 0, "Conversation ID to continue")
 	pflag.String("search", "", "Search previous conversations for keyword")
 	pflag.BoolP("list", "l", false, "List all conversations interactively")
+	webMode := webModeValue("off")
+	pflag.Var(&webMode, "web", "Web search mode: auto (model decides), always, or off; --web means always")
+	pflag.Lookup("web").NoOptDefVal = "true"
+	pflag.Int("web-results", 5, "Maximum web search results to include with --web")
 	pflag.BoolP("tui", "T", false, "Use TUI interface")
 	pflag.BoolP("no-output", "n", false, "Disable direct terminal output")
 	pflag.BoolP("quiet", "q", false, "Suppress non-essential output")
@@ -193,8 +224,14 @@ func Initialize() (*Options, error) {
 	// Role selection override (use role prompts from config)
 	pflag.StringP("role", "r", "", "Role to use for system prompt (as defined in config)")
 
-	// Bind flags to viper and parse CLI
-	viper.BindPFlags(pflag.CommandLine)
+	// Bind flags to viper and parse CLI. The web mode is read directly from its
+	// pflag value so it does not shadow the `web:` configuration section that
+	// holds the Brave API key.
+	pflag.CommandLine.VisitAll(func(flag *pflag.Flag) {
+		if flag.Name != "web" {
+			_ = viper.BindPFlag(flag.Name, flag)
+		}
+	})
 	// Parse CLI flags to populate values
 	pflag.Parse()
 
@@ -281,6 +318,26 @@ func Initialize() (*Options, error) {
 	opts.ConversationID = viper.GetInt("id")
 	opts.SearchKeyword = viper.GetString("search")
 	opts.ListConversations = viper.GetBool("list")
+	if !pflag.CommandLine.Changed("web") {
+		if configuredWebMode := viper.GetString("web.mode"); configuredWebMode != "" {
+			if err := webMode.Set(configuredWebMode); err != nil {
+				return nil, fmt.Errorf("invalid web.mode: %w", err)
+			}
+		}
+	}
+	opts.WebMode = webMode.String()
+	opts.WebResults = viper.GetInt("web-results")
+	opts.WebSearchAPIKey = os.Getenv("BRAVE_SEARCH_API_KEY")
+	if opts.WebSearchAPIKey == "" {
+		key, err := apikey.Resolve(viper.GetString("web.api_key"))
+		if err != nil {
+			return nil, fmt.Errorf("resolve web.api_key command: %w", err)
+		}
+		opts.WebSearchAPIKey = key
+	}
+	if opts.WebResults < 1 || opts.WebResults > 20 {
+		return nil, fmt.Errorf("web-results must be between 1 and 20")
+	}
 	// Terminal size and tab width
 	opts.ScreenWidth = width
 	opts.ScreenTextWidth = textWidth

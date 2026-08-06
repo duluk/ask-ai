@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -19,6 +21,7 @@ import (
 	"github.com/duluk/ask-ai/pkg/linewrap"
 	"github.com/duluk/ask-ai/pkg/logger"
 	"github.com/duluk/ask-ai/pkg/tui"
+	"github.com/duluk/ask-ai/pkg/websearch"
 )
 
 // I'm probably writing "Ruby Go"...
@@ -232,6 +235,7 @@ func main() {
 }
 
 func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB) {
+	originalPrompt := *args.Prompt
 	model := *args.Model
 	// Parse model spec of form "provider/modelKey" or just "modelKey"
 	spec := model
@@ -281,7 +285,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 	args.Temperature = &apiTemp
 	apiMax := modelConf.MaxTokens
 	args.MaxTokens = &apiMax
-	logger.Info("Processing prompt", "->", *args.Prompt, "convID", *args.ConvID)
+	logger.Info("Processing prompt", "->", originalPrompt, "convID", *args.ConvID)
 	logger.Info("Using model", "provider", provider, "model", model, "temperature", apiTemp, "maxTokens", apiMax)
 
 	var client LLM.Client
@@ -301,6 +305,26 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		client = LLM.NewOpenAI("xai", apiURL)
 	default:
 		fmt.Printf("Unknown provider: %q\n", provider)
+		os.Exit(1)
+	}
+
+	switch opts.WebMode {
+	case "always":
+		args = addWebSearchContext(opts, args, originalPrompt)
+	case "auto":
+		query, err := chooseWebSearchQuery(client, args)
+		if err != nil {
+			logger.Error("Web search planning failed", "error", err)
+			fmt.Println("Web search planning error:", err)
+			os.Exit(1)
+		}
+		logger.Info("Web search decision", "useWeb", query != "")
+		if query != "" {
+			args = addWebSearchContext(opts, args, query)
+		}
+	case "off":
+	default:
+		fmt.Printf("Invalid web mode %q\n", opts.WebMode)
 		os.Exit(1)
 	}
 
@@ -368,7 +392,7 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 
 	if !opts.NoRecord {
 		err = db.InsertConversation(
-			*args.Prompt,
+			originalPrompt,
 			fullResponse,
 			model,
 			*args.Temperature,
@@ -382,6 +406,80 @@ func chatWithLLM(opts *config.Options, args LLM.ClientArgs, db *database.ChatDB)
 		logger.Debug("Inserted conversation into database", "convID", *args.ConvID)
 		logger.Debug("Usage stats from model", "inputTokens", resp.InputTokens, "outputTokens", resp.OutputTokens)
 	}
+}
+
+func addWebSearchContext(opts *config.Options, args LLM.ClientArgs, query string) LLM.ClientArgs {
+	logger.Info("Starting web search", "query", query, "resultsRequested", opts.WebResults)
+	if !opts.Quiet && !opts.NoOutput {
+		fmt.Println("Researching current information on the web...")
+	}
+	searchClient := websearch.NewBraveClient(opts.WebSearchAPIKey)
+	results, err := searchClient.Search(context.Background(), query, opts.WebResults)
+	if err != nil {
+		logger.Error("Web search failed", "query", query, "error", err)
+		fmt.Println("Web search error:", err)
+		os.Exit(1)
+	}
+	if len(results) == 0 {
+		logger.Info("Web search completed with no results", "query", query)
+		if !opts.Quiet && !opts.NoOutput {
+			fmt.Println("Web research found no results; continuing without web context.")
+		}
+		return args
+	}
+	promptWithContext := *args.Prompt + "\n\n---\n" + websearch.FormatResults(query, results)
+	args.Prompt = &promptWithContext
+	logger.Info("Web search completed", "results", len(results), "query", query)
+	if !opts.Quiet && !opts.NoOutput {
+		fmt.Printf("Web research complete: using %d source(s).\n", len(results))
+	}
+	return args
+}
+
+func chooseWebSearchQuery(client LLM.Client, args LLM.ClientArgs) (string, error) {
+	const plannerInstruction = `Decide whether the user needs current information from the web. Search only when it would materially improve correctness, such as for recent events, current prices, schedules, laws, live product details, or facts that may have changed since your knowledge cutoff. Do not search for timeless explanations, writing, reasoning, or questions answerable from the conversation.
+
+Return only valid JSON with no Markdown or explanation: {"search":false} or {"search":true,"query":"a concise web search query"}.`
+
+	plannerPrompt := *args.Prompt
+	plannerSystemPrompt := *args.SystemPrompt + "\n\n" + plannerInstruction
+	plannerMaxTokens := 100
+	plannerArgs := args
+	plannerArgs.Prompt = &plannerPrompt
+	plannerArgs.SystemPrompt = &plannerSystemPrompt
+	plannerArgs.MaxTokens = &plannerMaxTokens
+
+	_, stream, err := client.Chat(plannerArgs, 0, 0)
+	if err != nil {
+		return "", err
+	}
+	var output strings.Builder
+	for chunk := range stream {
+		if chunk.Error != nil {
+			return "", chunk.Error
+		}
+		output.WriteString(chunk.Content)
+	}
+
+	raw := output.String()
+	start, end := strings.Index(raw, "{"), strings.LastIndex(raw, "}")
+	if start < 0 || end < start {
+		return "", fmt.Errorf("model did not return a web-search decision")
+	}
+	var decision struct {
+		Search bool   `json:"search"`
+		Query  string `json:"query"`
+	}
+	if err := json.Unmarshal([]byte(raw[start:end+1]), &decision); err != nil {
+		return "", fmt.Errorf("invalid web-search decision: %w", err)
+	}
+	if !decision.Search {
+		return "", nil
+	}
+	if query := strings.TrimSpace(decision.Query); query != "" {
+		return query, nil
+	}
+	return "", fmt.Errorf("model requested web search without a query")
 }
 
 func getPromptFromUser(model string) string {
