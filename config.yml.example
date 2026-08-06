@@ -87,6 +87,11 @@ models:
             temperature: 0.7
             max_tokens: 4096
 
+# Optional: used by --web and --web=auto. Prefer BRAVE_SEARCH_API_KEY in the
+# environment.
+# web:
+#     api_key: "" # May be a command, e.g. "op read op://vault/brave/api-key"
+#     mode: auto # Optional default: auto, always, or off
 
 defaults:
     model: openai/o4-mini

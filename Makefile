@@ -10,11 +10,11 @@ INSTALL_DIR := $(GOPATH)/bin
 MAIN_BINARY := ask-ai
 INSTALL_BINARY := ask-ai-go
 
-CMD_FILES := $(wildcard cmd/**/*.go)
+CMD_FILES := $(filter-out %_test.go,$(wildcard cmd/**/*.go))
 BIN_FILES := $(patsubst cmd/%/main.go,%,$(CMD_FILES))
-PKG_FILES := $(wildcard pkg/**/*.go)
+PKG_FILES := $(filter-out %_test.go,$(wildcard pkg/**/*.go))
 TST_FILES := $(wildcard pkg/**/*_test.go)
-TST_DIRS  := $(shell go list ./... | grep -v cmd)
+TST_DIRS  := $(shell go list ./...)
 
 CP := $(shell which cp)
 GO := $(shell which go)

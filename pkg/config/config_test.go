@@ -121,6 +121,42 @@ database:
 			},
 		},
 		{
+			name: "web API key from config file",
+			config: `
+web:
+  api_key: "test-brave-key"
+  mode: auto
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "test-brave-key", opts.WebSearchAPIKey)
+				assert.Equal(t, "auto", opts.WebMode)
+			},
+		},
+		{
+			name: "web flag overrides configured mode",
+			args: []string{"--web"},
+			config: `
+web:
+  mode: auto
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "always", opts.WebMode)
+			},
+		},
+		{
+			name: "web API key command from config file",
+			config: `
+web:
+  api_key: "printf command-brave-key"
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "command-brave-key", opts.WebSearchAPIKey)
+			},
+		},
+		{
 			name: "command line args override config file",
 			args: []string{
 				"--model", "grok",

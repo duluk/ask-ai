@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"unicode"
 
 	"github.com/spf13/viper"
+
+	"github.com/duluk/ask-ai/pkg/apikey"
 )
 
 // Gemini created this function, along with tokenizeWord. It's not perfect by
@@ -71,14 +72,10 @@ func getClientKey(llm string) (string, error) {
 	// 2) Try API key from config file via viper
 	cfgKey := fmt.Sprintf("models.%s.api_key", llm)
 	if key := viper.GetString(cfgKey); key != "" {
-		// If the api_key contains whitespace, treat it as a shell command to run
-		if strings.ContainsAny(key, " \t") {
-			out, err := exec.Command("sh", "-c", key).Output()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error executing API key command for %s: %v\n", llm, err)
-				os.Exit(1)
-			}
-			return strings.TrimSpace(string(out)), nil
+		key, err := apikey.Resolve(key)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error executing API key command for %s: %v\n", llm, err)
+			os.Exit(1)
 		}
 		return key, nil
 	}
