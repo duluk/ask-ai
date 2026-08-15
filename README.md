@@ -88,5 +88,10 @@ $ bin/ask-ai --show 3
 $ bin/ask-ai --id 42 "What about the Reti?"
 ```
 
+* List configured role names:
+```bash
+$ bin/ask-ai --list-roles
+```
+
 ### [NOTE]
 > This is a work in progress and not all functionality has been added.
