@@ -35,6 +35,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if opts.ListRoles {
+		for _, name := range config.RoleNames(opts.Config) {
+			fmt.Println(name)
+		}
+		return
+	}
+
 	if opts.DumpConfig {
 		config.DumpConfig(opts)
 	}

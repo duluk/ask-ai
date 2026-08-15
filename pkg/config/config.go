@@ -116,6 +116,7 @@ type Options struct {
 
 	SearchKeyword     string // Keyword for searching previous conversations
 	ListConversations bool   // Flag to list all conversations interactively
+	ListRoles         bool   // Flag to list configured role names and exit
 	WebMode           string // off, always, or auto
 	WebResults        int    // Maximum number of web results to include
 	WebSearchAPIKey   string // Brave Search API key, from environment or configuration
@@ -205,6 +206,7 @@ func Initialize() (*Options, error) {
 	pflag.IntP("id", "i", 0, "Conversation ID to continue")
 	pflag.String("search", "", "Search previous conversations for keyword")
 	pflag.BoolP("list", "l", false, "List all conversations interactively")
+	pflag.Bool("list-roles", false, "List configured role names and exit")
 	webMode := webModeValue("off")
 	pflag.Var(&webMode, "web", "Web search mode: auto (model decides), always, or off; --web means always")
 	pflag.Lookup("web").NoOptDefVal = "true"
@@ -318,6 +320,7 @@ func Initialize() (*Options, error) {
 	opts.ConversationID = viper.GetInt("id")
 	opts.SearchKeyword = viper.GetString("search")
 	opts.ListConversations = viper.GetBool("list")
+	opts.ListRoles = viper.GetBool("list-roles")
 	if !pflag.CommandLine.Changed("web") {
 		if configuredWebMode := viper.GetString("web.mode"); configuredWebMode != "" {
 			if err := webMode.Set(configuredWebMode); err != nil {
@@ -396,32 +399,39 @@ func Initialize() (*Options, error) {
 		opts.Temperature = float32(viper.GetFloat64("temperature"))
 	}
 
-	// SystemPrompt: CLI flag > role selection > old-style config block > new-style defaults
-	if sp := viper.GetString("system-prompt"); sp != "" {
-		opts.SystemPrompt = sp
-	} else if roleName := viper.GetString("role"); roleName != "" {
-		if rc, ok := config.Roles[roleName]; ok {
-			opts.SystemPrompt = strings.Join(rc.Prompt, "\n")
-			// Override model if specified for this role and not set via CLI
-			if rc.Model != "" && viper.GetString("model") == "" {
-				opts.Model = rc.Model
+	// SystemPrompt: CLI flag > role selection > old-style config block >
+	// new-style defaults. Skip when only listing roles so a missing default
+	// role does not block it.
+	if !opts.ListRoles {
+		if sp := viper.GetString("system-prompt"); sp != "" {
+			opts.SystemPrompt = sp
+		} else if roleName := viper.GetString("role"); roleName != "" {
+			if rc, ok := config.Roles[roleName]; ok {
+				opts.SystemPrompt = strings.Join(rc.Prompt, "\n")
+				// Override model if specified for this role and not set via CLI
+				if rc.Model != "" && viper.GetString("model") == "" {
+					opts.Model = rc.Model
+				}
+			} else {
+				return nil, fmt.Errorf("role %q not found in config", roleName)
 			}
-		} else {
-			return nil, fmt.Errorf("role %q not found in config", roleName)
-		}
-	} else if defaultRole := viper.GetString("defaults.role"); defaultRole != "" {
-		if rc, ok := config.Roles[defaultRole]; ok {
-			opts.SystemPrompt = strings.Join(rc.Prompt, "\n")
-			if rc.Model != "" && viper.GetString("model") == "" {
-				opts.Model = rc.Model
+		} else if defaultRole := viper.GetString("defaults.role"); defaultRole != "" {
+			if rc, ok := config.Roles[defaultRole]; ok {
+				opts.SystemPrompt = strings.Join(rc.Prompt, "\n")
+				if rc.Model != "" && viper.GetString("model") == "" {
+					opts.Model = rc.Model
+				}
+			} else {
+				return nil, fmt.Errorf(
+					"default role %q not found in config",
+					defaultRole,
+				)
 			}
-		} else {
-			return nil, fmt.Errorf("default role %q not found in config", defaultRole)
+		} else if modelConf != nil && modelConf.IsSet("system_prompt") {
+			opts.SystemPrompt = modelConf.GetString("system_prompt")
+		} else if sp := viper.GetString("defaults.system_prompt"); sp != "" {
+			opts.SystemPrompt = sp
 		}
-	} else if modelConf != nil && modelConf.IsSet("system_prompt") {
-		opts.SystemPrompt = modelConf.GetString("system_prompt")
-	} else if sp := viper.GetString("defaults.system_prompt"); sp != "" {
-		opts.SystemPrompt = sp
 	}
 
 	// Log and database settings
@@ -441,6 +451,20 @@ func Initialize() (*Options, error) {
 	}
 
 	return opts, nil
+}
+
+// RoleNames returns configured role names in sorted order.
+func RoleNames(cfg *Config) []string {
+	if cfg == nil || len(cfg.Roles) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(cfg.Roles))
+	for name := range cfg.Roles {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }
 
 // GetModelConfig returns the configuration for a specific model
