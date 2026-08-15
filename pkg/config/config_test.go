@@ -412,6 +412,39 @@ roles:
 				assert.Contains(t, err.Error(), "role \"unknown\" not found")
 			},
 		},
+		{
+			name: "list roles flag",
+			args: []string{"--list-roles"},
+			config: `
+roles:
+  writer:
+    prompt: "write"
+  analyst:
+    prompt: "analyze"
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.True(t, opts.ListRoles)
+				assert.Equal(t, []string{"analyst", "writer"},
+					RoleNames(opts.Config))
+			},
+		},
+		{
+			name: "list roles ignores missing default role",
+			args: []string{"--list-roles"},
+			config: `
+roles:
+  writer:
+    prompt: "write"
+defaults:
+  role: missing
+`,
+			validate: func(t *testing.T, opts *Options, err error) {
+				assert.NoError(t, err)
+				assert.True(t, opts.ListRoles)
+				assert.Equal(t, []string{"writer"}, RoleNames(opts.Config))
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -424,6 +457,17 @@ roles:
 			tt.validate(t, opts, err)
 		})
 	}
+}
+
+func TestRoleNames(t *testing.T) {
+	assert.Empty(t, RoleNames(nil))
+	assert.Empty(t, RoleNames(&Config{}))
+	assert.Equal(t, []string{"a", "b"}, RoleNames(&Config{
+		Roles: map[string]RoleConfig{
+			"b": {},
+			"a": {},
+		},
+	}))
 }
 
 // Tests for GetModelConfig function
